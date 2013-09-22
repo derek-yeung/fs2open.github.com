@@ -1523,7 +1523,7 @@ int find_argnum(int parent, int arg)
 /**
  * From an operator name, return its index in the array Operators
  */
-int get_operator_index(char *token)
+int get_operator_index(const char *token)
 {
 	int	i;
 
@@ -1554,7 +1554,7 @@ int get_operator_index(int node)
 /**
  * From an operator name, return its constant (the number it was define'd with)
  */
-int get_operator_const(char *token)
+int get_operator_const(const char *token)
 {
 	int	idx = get_operator_index(token);
 
@@ -1946,15 +1946,15 @@ int check_sexp_syntax(int node, int return_type, int recursive, int *bad_node, i
 				}
 				if ((type == OPF_SHIP_WING_SHIPONTEAM_POINT) && sexp_determine_team(CTEXT(node)) >= 0)	{
 					break;
-						}
+				}
 
 				// only other possibility is waypoints
 				if (type == OPF_SHIP_WING_SHIPONTEAM_POINT || type == OPF_SHIP_WING_POINT || type == OPF_SHIP_WING_POINT_OR_NONE) {
-						if (find_matching_waypoint(CTEXT(node)) == NULL){
-							if (verify_vector(CTEXT(node))){  // non-zero on verify vector mean invalid!
-									return SEXP_CHECK_INVALID_POINT;
-								}
-							}
+					if (find_matching_waypoint(CTEXT(node)) == NULL){
+						if (verify_vector(CTEXT(node))){  // non-zero on verify vector mean invalid!
+							return SEXP_CHECK_INVALID_POINT;
+						}
+					}
 					break;
 				}
 
@@ -4703,8 +4703,8 @@ void sexp_get_object_ship_wing_point_team(object_ship_wing_point_team *oswpt, ch
 	if (team >= 0)
 	{
 		oswpt->type = OSWPT_TYPE_SHIP_ON_TEAM;
-				oswpt->team = team;
-		}
+		oswpt->team = team;
+	}
 
 
 	// check if we have a whole-team type
@@ -4743,12 +4743,12 @@ int sexp_num_ships_in_battle(int n)
 
 	    switch (oswpt1.type){
  		    case OSWPT_TYPE_WHOLE_TEAM:
-				  for ( so = GET_FIRST(&Ship_obj_list); so != END_OF_LIST(&Ship_obj_list); so = GET_NEXT(so) ) {
-					  shipp=&Ships[Objects[so->objnum].instance];
+			  for ( so = GET_FIRST(&Ship_obj_list); so != END_OF_LIST(&Ship_obj_list); so = GET_NEXT(so) ) {
+				  shipp=&Ships[Objects[so->objnum].instance];
 				  if (shipp->team == oswpt1.team) {
-						 count++;
-					  }
+					 count++;
 				  }
+			  }
 			  break;
 
   		    case OSWPT_TYPE_SHIP:
@@ -5211,9 +5211,9 @@ int sexp_has_docked_or_undocked(int n, int op_num)
 
 		if ( mission_log_get_time_indexed(op_num == OP_HAS_DOCKED_DELAY ? LOG_SHIP_DOCKED : LOG_SHIP_UNDOCKED, docker, dockee, count, &time) )
 		{
-	if ( (Missiontime - time) >= delay )
-		return SEXP_KNOWN_TRUE;
-}
+			if ( (Missiontime - time) >= delay )
+				return SEXP_KNOWN_TRUE;
+		}
 	}
 	else
 	{
@@ -5221,14 +5221,14 @@ int sexp_has_docked_or_undocked(int n, int op_num)
 			return SEXP_KNOWN_TRUE;
 	}
 
-		if ( mission_log_get_time(LOG_SHIP_DESTROYED, docker, NULL, NULL) || mission_log_get_time(LOG_SHIP_DESTROYED, dockee, NULL, NULL) )
-			return SEXP_KNOWN_FALSE;
+	if ( mission_log_get_time(LOG_SHIP_DESTROYED, docker, NULL, NULL) || mission_log_get_time(LOG_SHIP_DESTROYED, dockee, NULL, NULL) )
+		return SEXP_KNOWN_FALSE;
 
-		if ( mission_log_get_time(LOG_SELF_DESTRUCTED, docker, NULL, NULL) || mission_log_get_time(LOG_SELF_DESTRUCTED, dockee, NULL, NULL) )
-			return SEXP_KNOWN_FALSE;
+	if ( mission_log_get_time(LOG_SELF_DESTRUCTED, docker, NULL, NULL) || mission_log_get_time(LOG_SELF_DESTRUCTED, dockee, NULL, NULL) )
+		return SEXP_KNOWN_FALSE;
 
-		return SEXP_FALSE;
-	}
+	return SEXP_FALSE;
+}
 
 int sexp_has_arrived_delay(int n)
 {
@@ -7302,7 +7302,7 @@ float get_damage_caused(int damaged_ship, int attacker )
 }
 
 // Karajorma
-int sexp_get_damage_caused(int node) 
+int sexp_get_damage_caused(int node)
 {
 	int sindex, damaged_sig, attacker_sig; 
 	float damage_caused = 0.0f;
@@ -7341,8 +7341,8 @@ int sexp_get_damage_caused(int node)
 			if (sindex < 0) {
 				continue;
 			} else {
-			attacker_sig = Ships_exited[sindex].obj_signature; 
-		}
+				attacker_sig = Ships_exited[sindex].obj_signature;
+			}
 		}
 		else {
 			attacker_sig = Objects[Ships[sindex].objnum].signature ;
@@ -9663,7 +9663,7 @@ void sexp_hud_set_max_targeting_range(int n)
 
 	if (Hud_max_targeting_range < 0) {
 		Hud_max_targeting_range = 0;
-}
+	}
 
 	multi_start_callback();
 	multi_send_int(Hud_max_targeting_range);
@@ -21074,7 +21074,7 @@ int sexp_is_in_box(int n)
 	box_corner_2.xyz.z = MAX(z1, z2);
 
 	// Ship to define reference frame is optional
-	object* reference_ship_obj = NULL;
+	object *reference_ship_obj = NULL;
 	if (n != -1)
 	{
 		int sindex = ship_name_lookup(CTEXT(n));
@@ -21094,7 +21094,7 @@ int sexp_is_in_box(int n)
 		case OSWPT_TYPE_WING:
 			for (i = 0; i < oswpt.wingp->current_count; i++)
 				if (!test_point_within_box(&Objects[Ships[oswpt.wingp->ship_index[i]].objnum].pos, &box_corner_1, &box_corner_2, reference_ship_obj))
-		return SEXP_FALSE;
+					return SEXP_FALSE;
 			return SEXP_TRUE;
 
 		case OSWPT_TYPE_SHIP:
@@ -21102,7 +21102,7 @@ int sexp_is_in_box(int n)
 			return test_point_within_box(&oswpt.objp->pos, &box_corner_1, &box_corner_2, reference_ship_obj);
 
 		default:
-		return SEXP_FALSE;
+			return SEXP_FALSE;
 	}
 }
 

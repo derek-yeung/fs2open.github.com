@@ -76,7 +76,7 @@ void model_collide_allocate_point_list(int n_points)
 // Returns non-zero if vector from p0 to pdir 
 // intersects the bounding box.
 // hitpos could be NULL, so don't fill it if it is.
-int mc_ray_boundingbox( vec3d *min, vec3d *max, vec3d * p0, vec3d *pdir, vec3d *hitpos )
+inline int mc_ray_boundingbox( vec3d *min, vec3d *max, vec3d * p0, vec3d *pdir, vec3d *hitpos )
 {
 
 	vec3d tmp_hitpos;
@@ -481,7 +481,7 @@ void model_collide_tmappoly(ubyte * p)
 
 int model_collide_sub( void *model_ptr );
 
-void model_collide_sortnorm(ubyte * p)
+inline void model_collide_sortnorm(ubyte * p)
 {
 	int frontlist = w(p+36);
 	int backlist = w(p+40);
@@ -509,7 +509,7 @@ void model_collide_sortnorm(ubyte * p)
 
 //calls the object interpreter to render an object.  The object renderer
 //is really a seperate pipeline. returns true if drew
-int model_collide_sub(void *model_ptr )
+inline int model_collide_sub(void *model_ptr )
 {
 	ubyte *p = (ubyte *)model_ptr;
 	int chunk_type, chunk_size;
@@ -602,7 +602,7 @@ void model_collide_bsp_poly(bsp_collision_tree *tree, int leaf_index)
 	}
 }
 
-void model_collide_bsp(bsp_collision_tree *tree, int node_index)
+inline void model_collide_bsp(bsp_collision_tree *tree, int node_index)
 {
 	if ( tree->node_list == NULL || tree->n_verts <= 0) {
 		return;
@@ -949,7 +949,7 @@ bool mc_shield_check_common(shield_tri	*tri)
 	return false;
 }
 
-bool mc_check_sldc(int offset)
+inline bool mc_check_sldc(int offset)
 {
 	if (offset > Mc_pm->sldc_size-5) //no way is this big enough
 		return false;
@@ -999,7 +999,7 @@ bool mc_check_sldc(int offset)
 }
 
 // checks a vector collision against a ships shield (if it has shield points defined).
-void mc_check_shield()
+inline void mc_check_shield()
 {
 	int i;
 
@@ -1031,7 +1031,7 @@ void mc_check_shield()
 
 // This function recursively checks a submodel and its children
 // for a collision with a vector.
-void mc_check_subobj( int mn )
+inline void mc_check_subobj( int mn )
 {
 	vec3d tempv;
 	vec3d hitpt;		// used in bounding box check

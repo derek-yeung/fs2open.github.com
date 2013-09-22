@@ -294,6 +294,7 @@ FS2_SOURCES =	\
 	globalincs/fsmemory.h	\
 	globalincs/globals.h	\
 	globalincs/linklist.h	\
+	globalincs/profiling.cpp	\
 	globalincs/pstypes.h	\
 	globalincs/safe_strings.cpp	\
 	globalincs/safe_strings.h	\
@@ -492,6 +493,7 @@ FS2_SOURCES =	\
 	model/modelsinc.h	\
 	model/modeloctant.cpp	\
 	model/modelread.cpp	\
+	multithread/multithread.cpp	\
 	nebula/neb.cpp	\
 	nebula/neb.h	\
 	nebula/neblightning.cpp	\

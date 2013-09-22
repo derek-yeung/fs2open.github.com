@@ -297,6 +297,11 @@
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
+			<name>code/multithread</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
 			<name>code/nebula</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
@@ -1717,16 +1722,6 @@
 			<locationURI>PARENT-3-PROJECT_LOC/code/hud/hudparse.h</locationURI>
 		</link>
 		<link>
-			<name>code/hud/hudresource.cpp</name>
-			<type>1</type>
-			<locationURI>PARENT-3-PROJECT_LOC/code/hud/hudresource.cpp</locationURI>
-		</link>
-		<link>
-			<name>code/hud/hudresource.h</name>
-			<type>1</type>
-			<locationURI>PARENT-3-PROJECT_LOC/code/hud/hudresource.h</locationURI>
-		</link>
-		<link>
 			<name>code/hud/hudreticle.cpp</name>
 			<type>1</type>
 			<locationURI>PARENT-3-PROJECT_LOC/code/hud/hudreticle.cpp</locationURI>
@@ -2410,6 +2405,16 @@
 			<name>code/model/modelsinc.h</name>
 			<type>1</type>
 			<locationURI>PARENT-3-PROJECT_LOC/code/model/modelsinc.h</locationURI>
+		</link>
+		<link>
+			<name>code/multithread/multithread.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-3-PROJECT_LOC/code/multithread/multithread.cpp</locationURI>
+		</link>
+		<link>
+			<name>code/multithread/multithread.h</name>
+			<type>1</type>
+			<locationURI>PARENT-3-PROJECT_LOC/code/multithread/multithread.h</locationURI>
 		</link>
 		<link>
 			<name>code/nebula/neb.cpp</name>

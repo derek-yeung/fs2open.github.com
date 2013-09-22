@@ -41,7 +41,7 @@
 #include "weapon/swarm.h"
 #include "weapon/weapon.h"
 
-
+#include "multithread/multithread.h"
 
 /*
  *  Global variables
@@ -49,7 +49,7 @@
 
 object obj_free_list;
 object obj_used_list;
-object obj_create_list;	
+object obj_create_list;
 
 object *Player_obj = NULL;
 object *Viewer_obj = NULL;
@@ -672,7 +672,7 @@ void obj_move_one_docked_object(object *objp, object *parent_objp)
  * Deals with firing player things like lasers, missiles, etc.
  *
  * Separated out because of multiplayer issues.
-*/
+ */
 void obj_player_fire_stuff( object *objp, control_info ci )
 {
 	ship *shipp;
@@ -842,7 +842,7 @@ void obj_move_call_physics(object *objp, float frametime)
 				goto obj_maybe_fire;
 			}
 
-				physics_sim(&objp->pos, &objp->orient, &objp->phys_info, frametime );		// simulate the physics
+			physics_sim(&objp->pos, &objp->orient, &objp->phys_info, frametime );		// simulate the physics
 
 			// if the object is the player object, do things that need to be done after the ship
 			// is moved (like firing weapons, etc).  This routine will get called either single
@@ -860,7 +860,7 @@ obj_maybe_fire:
 			// do stream weapon firing for all ships themselves. 
 			if(objp->type == OBJ_SHIP){
 				ship_fire_primary(objp, 1, 0);
-					has_fired = 1;
+				has_fired = 1;
 			}
 		}
 	}
@@ -1365,11 +1365,11 @@ void obj_move_all(float frametime)
 		vec3d cur_pos = objp->pos;			// Save the current position
 
 #ifdef OBJECT_CHECK 
-			obj_check_object( objp );
+		obj_check_object( objp );
 #endif
 
 		// pre-move
-		obj_move_all_pre(objp, frametime);
+		PROFILE("Pre Move", obj_move_all_pre(objp, frametime));
 
 		// store last pos and orient
 		objp->last_pos = cur_pos;
@@ -1382,12 +1382,12 @@ void obj_move_all(float frametime)
 				multi_oo_interp(objp);
 			} else {
 				// physics
-				obj_move_call_physics(objp, frametime);
+				PROFILE("Physics", obj_move_call_physics(objp, frametime));
 			}
 		}
 
 		// move post
-		obj_move_all_post(objp, frametime);
+		PROFILE("Post Move", obj_move_all_post(objp, frametime));
 
 		// Equipment script processing
 		if (objp->type == OBJ_SHIP) {
@@ -1453,13 +1453,22 @@ void obj_move_all(float frametime)
 	// do pre-collision stuff for beam weapons
 	beam_move_all_pre();
 
+	profile_begin("Collision Detection");
 	if ( Collisions_enabled ) {
 		if ( Cmdline_old_collision_sys ) {
 			obj_check_all_collisions();
 		} else {
+#ifdef MULTITHREADING_ENABLED
+		  collision_pair_clear();
+#endif
 			obj_sort_and_collide();
+#ifdef MULTITHREADING_ENABLED
+			execute_collisions();
+#endif
 		}
 	}
+	profile_end("Collision Detection");
+
 
 	turret_swarm_check_validity();
 
@@ -1602,33 +1611,6 @@ void obj_client_pre_interpolate()
 	}
 }
 
-/**
- * Do client-side post-interpolation object movement
- */
-void obj_client_post_interpolate()
-{
-	object *objp;
-
-	//	After all objects have been moved, move all docked objects.
-	objp = GET_FIRST(&obj_used_list);
-	while( objp !=END_OF_LIST(&obj_used_list) )	{
-		if ( objp != Player_obj ) {
-			dock_move_docked_objects(objp);
-		}
-		objp = GET_NEXT(objp);
-	}	
-
-	// check collisions
-	if ( Cmdline_old_collision_sys ) {
-		obj_check_all_collisions();
-	} else {
-		obj_sort_and_collide();
-	}
-
-	// do post-collision stuff for beam weapons
-	beam_move_all_post();
-}
-
 void obj_observer_move(float frame_time)
 {
 	object *objp;
@@ -1660,7 +1642,7 @@ void obj_get_average_ship_pos( vec3d *pos )
 
 	vm_vec_zero( pos );
 
-   // average up all ship positions
+	// average up all ship positions
 	count = 0;
 	for ( objp = GET_FIRST(&obj_used_list); objp != END_OF_LIST(&obj_used_list); objp = GET_NEXT(objp) ) {
 		if ( objp->type != OBJ_SHIP )

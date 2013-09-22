@@ -329,4 +329,8 @@ bool object_glide_forced(object* objp);
 int obj_get_by_signature(int sig);
 int object_get_model(object *objp);
 
+void obj_move_all_pre(object *objp, float frametime);
+
+void obj_check_object( object *obj );
+
 #endif

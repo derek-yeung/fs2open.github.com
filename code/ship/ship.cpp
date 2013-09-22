@@ -15237,11 +15237,11 @@ float ship_get_secondary_weapon_range(ship *shipp)
 		weapon_info	*wip;
 		int bank=swp->current_secondary_bank;
 		if (swp->secondary_bank_weapons[bank] >= 0) {
-		wip = &Weapon_info[swp->secondary_bank_weapons[bank]];
-		if ( swp->secondary_bank_ammo[bank] > 0 ) {
-			srange = wip->max_speed * wip->lifetime;
+			wip = &Weapon_info[swp->secondary_bank_weapons[bank]];
+			if ( swp->secondary_bank_ammo[bank] > 0 ) {
+				srange = wip->max_speed * wip->lifetime;
+			}
 		}
-	}
 	}
 
 	return srange;
@@ -15271,14 +15271,14 @@ int get_max_ammo_count_for_primary_bank(int ship_class, int bank, int ammo_type)
 int get_max_ammo_count_for_bank(int ship_class, int bank, int ammo_type)
 {
 	float capacity, size;
-
+    
 	if (ship_class < 0 || bank < 0 || ammo_type < 0) {
 		return 0;
 	} else {
-	capacity = (float) Ship_info[ship_class].secondary_bank_ammo_capacity[bank];
-	size = (float) Weapon_info[ammo_type].cargo_size;
-	return (int) (capacity / size);
-}
+		capacity = (float) Ship_info[ship_class].secondary_bank_ammo_capacity[bank];
+		size = (float) Weapon_info[ammo_type].cargo_size;
+		return (int) (capacity / size);
+	}
 }
 
 /**

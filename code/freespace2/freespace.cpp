@@ -98,6 +98,7 @@
 #include "missionui/missionweaponchoice.h"
 #include "missionui/redalert.h"
 #include "mod_table/mod_table.h"
+#include "multithread/multithread.h"
 #include "nebula/neb.h"
 #include "nebula/neblightning.h"
 #include "network/multi.h"
@@ -982,7 +983,7 @@ void game_level_init(int seed)
 	batch_reset();
 
 	// Initialize the game subsystems
-		game_reset_time();			// resets time, and resets saved time too
+	game_reset_time();			// resets time, and resets saved time too
 
 	Multi_ping_timestamp = -1;
 
@@ -1706,6 +1707,10 @@ void game_init()
 	// Initialize the timer before the os
 	timer_init();
 
+#ifdef MULTITHREADING_ENABLED
+	create_threads();
+#endif
+
 	// init os stuff next
 	if ( !Is_standalone ) {		
 		os_init( Osreg_class_name, Osreg_app_name );
@@ -1727,6 +1732,7 @@ void game_init()
 	strcat_s(whee, DIR_SEPARATOR_STR);
 	strcat_s(whee, EXE_FNAME);
 
+	profile_init();
 	//Initialize the libraries
 	s1 = timer_get_milliseconds();
 
@@ -2105,13 +2111,19 @@ void game_show_framerate()
 #endif
 
 
-	if (Show_framerate)	{
+	if (Show_framerate || Cmdline_frame_profile)	{
 		gr_set_color_fast(&HUD_color_debug);
 
-		if (frametotal != 0.0f)
-			gr_printf( 20, 100, "FPS: %0.1f", Framerate );
-		else
-			gr_string( 20, 100, "FPS: ?" );
+		if (Cmdline_frame_profile) {
+			gr_string(20, 110, profile_output);
+		}
+
+		if (Show_framerate) {
+			if (frametotal != 0.0f)
+				gr_printf( 20, 100, "FPS: %0.1f", Framerate );
+			else
+				gr_string( 20, 100, "FPS: ?" );
+		}
 	}
 
 #ifndef NDEBUG
@@ -3625,7 +3637,9 @@ void game_render_frame( camid cid )
 	//if (!(Viewer_mode & (VM_EXTERNAL | VM_SLEWED | VM_CHASE | VM_DEAD_VIEW))) {
 	render_shields();
 	//}
-	particle_render_all();					// render particles after everything else.
+
+	PROFILE("Particles", particle_render_all());					// render particles after everything else.
+	
 #ifdef DYN_CLIP_DIST
 	if(!Cmdline_nohtl)
 	{
@@ -3637,7 +3651,8 @@ void game_render_frame( camid cid )
 #endif
 
 	beam_render_all();						// render all beam weapons
-	trail_render_all();						// render missilie trails after everything else.	
+	
+	PROFILE("Trails", trail_render_all());						// render missilie trails after everything else.	
 
 	// render nebula lightning
 	nebl_render_all();
@@ -3982,7 +3997,7 @@ void game_simulation_frame()
 		}
 		
 		// move all the objects now
-		obj_move_all(flFrametime);
+		PROFILE("Move Objects - Master", obj_move_all(flFrametime));
 
 		mission_eval_goals();
 	}
@@ -4001,7 +4016,7 @@ void game_simulation_frame()
 		}
 
 		// move all objects - does interpolation now as well
-		obj_move_all(flFrametime);
+		PROFILE("Move Objects - Client", obj_move_all(flFrametime));
 
 
 	}
@@ -4024,10 +4039,10 @@ void game_simulation_frame()
 
 		if (!physics_paused)	{
 			// Move particle system
-			particle_move_all(flFrametime);	
+			PROFILE("Move Particles", particle_move_all(flFrametime));	
 
 			// Move missile trails
-			trail_move_all(flFrametime);		
+			PROFILE("Move Trails", trail_move_all(flFrametime));		
 
 			// Flash the gun flashes
 			shipfx_flash_do_frame(flFrametime);			
@@ -4316,6 +4331,7 @@ void game_frame(bool paused)
 #endif
 	// start timing frame
 	timing_frame_start();
+	profile_begin("Main Frame");
 
 	DEBUG_GET_TIME( total_time1 )
 
@@ -4374,8 +4390,7 @@ void game_frame(bool paused)
 			return;
 		}
 		
-		
-		game_simulation_frame(); 
+		PROFILE("Simulation", game_simulation_frame()); 
 		
 		// if not actually in a game play state, then return.  This condition could only be true in 
 		// a multiplayer game.
@@ -4404,7 +4419,8 @@ void game_frame(bool paused)
 			DEBUG_GET_TIME( render3_time1 )
 			
 			camid cid = game_render_frame_setup();
-			game_render_frame( cid );
+
+			PROFILE("Render", game_render_frame( cid ));
 			
 			//Cutscene bars
 			clip_frame_view();
@@ -4487,7 +4503,7 @@ void game_frame(bool paused)
 			// If a regular popup is active, don't flip (popup code flips)
 			if( !popup_running_state() ){
 				DEBUG_GET_TIME( flip_time1 )
-				game_flip_page_and_time_it();
+				PROFILE("Page Flip", game_flip_page_and_time_it());
 				DEBUG_GET_TIME( flip_time2 )
 			}
 
@@ -4504,6 +4520,9 @@ void game_frame(bool paused)
 
 	// process lightning (nebula only)
 	nebl_process();
+
+	profile_end("Main Frame");
+	profile_dump_output();
 
 	DEBUG_GET_TIME( total_time2 )
 
@@ -5526,7 +5545,7 @@ void game_leave_state( int old_state, int new_state )
 
 			} else {
 				cmd_brief_close();
-					common_select_close();
+				common_select_close();
 				if (new_state == GS_STATE_MAIN_MENU) {
 					freespace_stop_mission();	
 				}
@@ -7233,6 +7252,9 @@ void game_shutdown(void)
 {
 	gTirDll_TrackIR.Close( );
 
+#ifdef MULTITHREADING_ENABLED
+	destroy_threads();
+#endif
 
 	fsspeech_deinit();
 #ifdef FS2_VOICER

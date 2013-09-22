@@ -704,18 +704,21 @@ void opengl_shader_init_uniform(const char *uniform_text)
  */
 GLint opengl_shader_get_uniform(const char *uniform_text)
 {
-	if ( (Current_shader == NULL) || (uniform_text == NULL) ) {
+	if ((Current_shader == NULL)) {
 		Int3();
 		return -1;
 	}
 
 	SCP_vector<opengl_shader_uniform_t>::iterator uniform;
-	
+
 	for (uniform = Current_shader->uniforms.begin(); uniform != Current_shader->uniforms.end(); ++uniform) {
-		if ( !uniform->text_id.compare(uniform_text) ) {
-			return uniform->location;
-		}
-	}
+    if(*(unsigned short *)uniform->text_id.c_str() == *(unsigned short *)uniform_text)
+    {
+      if ( !uniform->text_id.compare(uniform_text) ) {
+        return uniform->location;
+      }
+    }
+  }
 
 	return -1;
 }

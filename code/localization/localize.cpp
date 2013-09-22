@@ -37,7 +37,7 @@ SCP_vector<lang_info> Lcl_languages;
 lang_info Lcl_builtin_languages[NUM_BUILTIN_LANGUAGES] = {
 	{ "English",		"",		127,	589986744},				// English
 	{ "German",			"gr",	164,	-1132430286 },			// German
-	{ "French",			"fr",	164,	0 },			// French
+	{ "French",			"fr",	164,	0 },					// French
 	{ "Polish",			"pl",	127,	},						// Polish
 };
 
@@ -190,7 +190,7 @@ void lcl_init(int lang_init)
 
 		if(ret == NULL){
 			Error(LOCATION, "Default language not found."); 
-		}
+		}		
 
 		strcpy_s(lang_string, ret);
 		

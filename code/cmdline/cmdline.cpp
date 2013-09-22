@@ -200,7 +200,8 @@ Flag exe_params[] =
  #ifdef SCP_UNIX
 	{ "-nograb",			"Don't grab mouse/keyboard in a window",	true,	0,					EASY_DEFAULT,		"Dev Tool",		"http://www.hard-light.net/wiki/index.php/Command-Line_Reference#-nograb", },
  #endif
-	{ "-reparse_mainhall", "Reparse mainhall.tbl when loading halls", false, 0, EASY_DEFAULT, "Dev Tool", "http://www.hard-light.net/wiki/index.php/Command-Line_Reference#-reparse_mainhall", },
+	{ "-reparse_mainhall",	"Reparse mainhall.tbl when loading halls",	false,	0,					EASY_DEFAULT,		"Dev Tool",		"http://www.hard-light.net/wiki/index.php/Command-Line_Reference#-reparse_mainhall", },
+	{ "-profile_frame_time","Profile engine subsystems",				true,	0,					EASY_DEFAULT,		"Dev Tool",		"http://www.hard-light.net/wiki/index.php/Command-Line_Reference#-profile_frame_timings", },
 };
 
 // here are the command line parameters that we will be using for FreeSpace
@@ -275,6 +276,7 @@ cmdline_parm fxaa_arg("-fxaa", NULL);
 cmdline_parm fxaa_preset_arg("-fxaa_preset", NULL);
 cmdline_parm fb_explosions_arg("-fb_explosions", NULL);
 cmdline_parm flightshaftsoff_arg("-nolightshafts", NULL);
+cmdline_parm num_threads_arg("-num_threads", NULL);
 
 float Cmdline_clip_dist = Default_min_draw_distance;
 float Cmdline_fov = 0.75f;
@@ -299,6 +301,7 @@ int Cmdline_fxaa_preset = 6;
 extern int Fxaa_preset_last_frame;
 bool Cmdline_fb_explosions = 0;
 extern bool ls_force_off;
+int Cmdline_num_threads = 1;
 
 // Game Speed related
 cmdline_parm cache_bitmaps_arg("-cache_bitmaps", NULL);	// Cmdline_cache_bitmaps
@@ -423,6 +426,7 @@ cmdline_parm parse_cmdline_only(PARSE_COMMAND_LINE_STRING, NULL);
 cmdline_parm no_grab("-nograb", NULL);				// Cmdline_no_grab
 #endif
 cmdline_parm reparse_mainhall_arg("-reparse_mainhall", NULL); //Cmdline_reparse_mainhall
+cmdline_parm frame_profile_arg("-profile_frame_time", NULL); //Cmdline_frame_profile
 
 char *Cmdline_start_mission = NULL;
 int Cmdline_old_collision_sys = 0;
@@ -446,6 +450,7 @@ int Cmdline_verify_vps = 0;
 int Cmdline_no_grab = 0;
 #endif
 int Cmdline_reparse_mainhall = 0;
+bool Cmdline_frame_profile = false;
 
 // Other
 cmdline_parm get_flags_arg("-get_flags", NULL);
@@ -913,7 +918,6 @@ int cmdline_parm::get_int()
 
 		// secondly, we still need to get it right for the users sake...
 		char *moron = strstr(args, ",");
-
 		if ( moron && ((strlen(moron) + 1) < strlen(args)) ) {
 			// we get the last arg, since it's the newest one
 			offset = strlen(args) - strlen(moron) + 1;
@@ -1526,6 +1530,11 @@ bool SetCmdlineParams()
 		Cmdline_reparse_mainhall = 1;
 	}
 
+	if (frame_profile_arg.found() )
+	{
+		Cmdline_frame_profile = true;
+	}
+
 	//Deprecated flags - CommanderDJ
 	if( deprecated_spec_arg.found() )
 	{
@@ -1556,6 +1565,12 @@ bool SetCmdlineParams()
 	{
 		Cmdline_deprecated_jpgtga = 1;
 	}
+
+  if ( num_threads_arg.found() )
+  {
+    Cmdline_num_threads = num_threads_arg.get_int();
+    CLAMP(Cmdline_num_threads, 0, 255);
+  }
 
 	return true; 
 }
