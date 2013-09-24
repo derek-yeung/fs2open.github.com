@@ -440,6 +440,9 @@ if test "$fs2_os_linux" = "yes" || test "$fs2_os_osx" = "yes" || test "$fs2_os_b
 	fi
 fi
 
+dnl Posix Threads
+FS2_LIBS=$FS2_LIBS" -lpthread"
+
 
 dnl any extra optimization or warning flags
 if test "$fs2_os_win32" = "yes" ; then

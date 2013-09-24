@@ -22,7 +22,9 @@ typedef struct
 {
     object *object_1;
     object *object_2;
-    unsigned char flags;
+    bool processed;
+    bool collided;
+    bool executed;
     void *operation_func;
 } collision_pair;
 
@@ -33,15 +35,6 @@ typedef enum
   THREAD_TYPE_COLLISION,
   THREAD_TYPE_INVALID
 } thread_type;
-
-typedef enum
-{
-  COLLISION_PAIR_FLAG_COLLIDED,
-  COLLISION_PAIR_FLAG_RESULT,
-  COLLISION_PAIR_FLAG_EXECUTED,
-  COLLISION_PAIR_FLAG_INVALID
-};
-
 
 void create_threads();
 void destroy_threads();
