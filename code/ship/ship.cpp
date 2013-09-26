@@ -519,13 +519,13 @@ int ship_get_num_ships()
 	return count;
 }
 
-engine_wash_info::engine_wash_info()
+void engine_wash_info_init(engine_wash_info *ewi)
 {
-	name[0] = '\0';
-	angle = PI / 10.0f;
-	radius_mult = 1.0f;
-	length = 500.0f;
-	intensity = 1.0f;
+	ewi->name[0] = '\0';
+	ewi->angle = PI / 10.0f;
+	ewi->radius_mult = 1.0f;
+	ewi->length = 500.0f;
+	ewi->intensity = 1.0f;
 }
 
 /**
@@ -534,6 +534,8 @@ engine_wash_info::engine_wash_info()
 void parse_engine_wash(bool replace)
 {
 	engine_wash_info ewt;
+	engine_wash_info_init(&ewt);
+
 	engine_wash_info *ewp;
 	bool create_if_not_found  = true;
 
@@ -737,6 +739,7 @@ void init_ship_entry(ship_info *sip)
 	sip->death_fx_count = 6;
 	sip->vaporize_chance = 0;
 	sip->shockwave_count = 1;
+	shockwave_create_info_init(&sip->shockwave);
 	sip->explosion_bitmap_anims.clear();
 
 	sip->collision_damage_type_idx = -1;
@@ -3705,7 +3708,7 @@ int parse_ship_values(ship_info* sip, bool isTemplate, bool first_time, bool rep
 					}
 
 					//make sure that the amount of time it takes to accelerate up and down doesn't make it go farther than the angle
-					current_trigger->correct();
+					queued_animation_correct(current_trigger);
 				}
 				else if(!stricmp(name_tmp, "linked"))
 				{
@@ -6933,7 +6936,6 @@ void ship_blow_up_area_apply_blast( object *exp_objp)
 	ship *shipp;
 	ship_info *sip;
 	float	inner_rad, outer_rad, max_damage, max_blast, shockwave_speed;
-	shockwave_create_info sci;
 
 	//	No area explosion in training missions.
 	if (The_mission.game_type & MISSION_TYPE_TRAINING){
@@ -6979,6 +6981,9 @@ void ship_blow_up_area_apply_blast( object *exp_objp)
 	}
 
 	if ( shockwave_speed > 0 ) {
+		shockwave_create_info sci;
+		shockwave_create_info_init(&sci);
+
 		strcpy_s(sci.name, sip->shockwave.name);
 		strcpy_s(sci.pof_name, sip->shockwave.pof_name);
 		sci.inner_rad = inner_rad;
@@ -8513,6 +8518,7 @@ int ship_check_collision_fast( object * obj, object * other_obj, vec3d * hitpos)
 
 	num = obj->instance;
 
+	mc_info_init(&mc);
 	mc.model_instance_num = Ships[num].model_instance_num;
 	mc.model_num = Ship_info[Ships[num].ship_info_index].model_num;	// Fill in the model to check
 	mc.orient = &obj->orient;					// The object's orient
@@ -13907,6 +13913,7 @@ int ship_subsystem_in_sight(object* objp, ship_subsys* subsys, vec3d *eye_pos, v
 	vm_vec_normalized_dir(&eye_to_pos, subsys_pos, eye_pos);
 	vm_vec_scale_add(&terminus, eye_pos, &eye_to_pos, 100000.0f);
 
+	mc_info_init(&mc);
 	mc.model_instance_num = Ships[objp->instance].model_instance_num;
 	mc.model_num = Ship_info[Ships[objp->instance].ship_info_index].model_num;			// Fill in the model to check
 	mc.orient = &objp->orient;										// The object's orientation
@@ -14194,7 +14201,7 @@ char *ship_return_orders(char *outbuf, ship *sp)
 {
 	ai_info	*aip;
 	ai_goal	*aigp;
-	char		*order_text;
+	const char		*order_text;
 	char ship_name[NAME_LENGTH];
 	
 	Assert(sp->ai_index >= 0);
@@ -14306,11 +14313,11 @@ char *ship_return_time_to_goal(char *outbuf, ship *sp)
 		min_speed = 0.9f * max_speed;
 		if (aip->wp_list != NULL) {
 			Assert(aip->wp_index != INVALID_WAYPOINT_POSITION);
-			dist += vm_vec_dist_quick(&objp->pos, aip->wp_index->get_pos());
+			dist += vm_vec_dist_quick(&objp->pos, aip->wp_list->get_waypoints()[aip->wp_index].get_pos());
 
-			SCP_list<waypoint>::iterator ii;
+			SCP_vector<waypoint>::iterator ii;
 			vec3d *prev_vec = NULL;
-			for (ii = aip->wp_index; ii != aip->wp_list->get_waypoints().end(); ++ii) {
+			for (ii = (aip->wp_list->get_waypoints().begin() + aip->wp_index); ii != aip->wp_list->get_waypoints().end(); ++ii) {
 				if (prev_vec != NULL) {
 					dist += vm_vec_dist_quick(ii->get_pos(), prev_vec);
 				}
@@ -15510,7 +15517,7 @@ void ship_page_in()
 		}
 
 		// Page in the shockwave stuff. -C
-		sip->shockwave.load();
+		shockwave_create_info_load(&sip->shockwave);
 		if(sip->explosion_bitmap_anims.size() > 0) {
 			int num_fireballs = sip->explosion_bitmap_anims.size();
 			for(j = 0; j < num_fireballs; j++){

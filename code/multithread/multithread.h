@@ -11,6 +11,10 @@
 #define THREAD_WAIT                                         -1
 #define THREAD_EXIT                                         -2
 
+#define BIT_GET(x, y)                                       (x & (1 << y))
+#define BIT_SET(x, y)                                       (x |= (1 << y))
+#define BIT_CLEAR(x, y)                                     (x &= !(1 << y))
+
 typedef struct
 {
     pthread_t handle;
@@ -25,6 +29,7 @@ typedef struct
     bool processed;
     bool collided;
     bool executed;
+    unsigned char flags;
     void *operation_func;
 } collision_pair;
 
@@ -35,6 +40,14 @@ typedef enum
   THREAD_TYPE_COLLISION,
   THREAD_TYPE_INVALID
 } thread_type;
+
+typedef enum
+{
+  COLLISION_PAIR_PROCESSED,
+  COLLISION_PAIR_COLLIDED,
+  COLLISION_PAIR_EXECUTED,
+  COLLISION_PAIR_INVALID
+} collision_pair_flags;
 
 void create_threads();
 void destroy_threads();

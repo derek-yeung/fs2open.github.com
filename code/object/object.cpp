@@ -1468,7 +1468,10 @@ void obj_move_all(float frametime)
 		}
 	}
 	profile_end("Collision Detection");
+<<<<<<< HEAD
 
+=======
+>>>>>>> cebded3acbc410f1a49597b0698f0ee3a17f260e
 
 	turret_swarm_check_validity();
 

@@ -123,8 +123,31 @@ void collision_pair_add(object *object_1, object *object_2)
   collision_pair pair;
 
   memset(&pair, 0, sizeof(pair));
-  pair.object_1 = object_1;
-  pair.object_2 = object_2;
+  switch(COLLISION_OF(object_1->type, object_2->type))
+  {
+    case COLLISION_OF(OBJ_WEAPON,OBJ_SHIP):
+    case COLLISION_OF(OBJ_WEAPON, OBJ_DEBRIS):
+    case COLLISION_OF(OBJ_SHIP, OBJ_DEBRIS):
+    case COLLISION_OF(OBJ_WEAPON, OBJ_ASTEROID):
+    case COLLISION_OF(OBJ_SHIP, OBJ_ASTEROID):
+    case COLLISION_OF(OBJ_SHIP, OBJ_BEAM):
+    case COLLISION_OF(OBJ_ASTEROID, OBJ_BEAM):
+    case COLLISION_OF(OBJ_DEBRIS, OBJ_BEAM):
+    case COLLISION_OF(OBJ_WEAPON, OBJ_BEAM):
+    {
+      //swap these here so we don't have to check again further down
+      pair.object_1 = object_2;
+      pair.object_2 = object_1;
+      break;
+    }
+
+    default:
+    {
+      pair.object_1 = object_1;
+      pair.object_2 = object_2;
+      break;
+    }
+  }
 
   collision_list.push_back(pair);
 }
@@ -386,45 +409,25 @@ bool obj_collide_pair_threaded(object *A, object *B)
   ctype = COLLISION_OF(A->type,B->type);
   switch(ctype)
   {
-    case COLLISION_OF(OBJ_WEAPON,OBJ_SHIP):
-    {
-      swap_objects(A, B, tmp);
-    }
     case COLLISION_OF(OBJ_SHIP, OBJ_WEAPON):
     {
       check_collision = collide_ship_weapon;
       break;
-    }
-    case COLLISION_OF(OBJ_WEAPON, OBJ_DEBRIS):
-    {
-      swap_objects(A, B, tmp);
     }
     case COLLISION_OF(OBJ_DEBRIS, OBJ_WEAPON):
     {
       check_collision = collide_debris_weapon;
       break;
     }
-    case COLLISION_OF(OBJ_SHIP, OBJ_DEBRIS):
-    {
-      swap_objects(A, B, tmp);
-    }
     case COLLISION_OF(OBJ_DEBRIS, OBJ_SHIP):
     {
       check_collision = collide_debris_ship;
       break;
     }
-    case COLLISION_OF(OBJ_WEAPON, OBJ_ASTEROID):
-    {
-      swap_objects(A, B, tmp);
-    }
     case COLLISION_OF(OBJ_ASTEROID, OBJ_WEAPON):
     {
       check_collision = collide_asteroid_weapon;
       break;
-    }
-    case COLLISION_OF(OBJ_SHIP, OBJ_ASTEROID):
-    {
-      swap_objects(A, B, tmp);
     }
     case COLLISION_OF(OBJ_ASTEROID, OBJ_SHIP):
     {
@@ -436,10 +439,6 @@ bool obj_collide_pair_threaded(object *A, object *B)
       check_collision = collide_ship_ship;
       break;
     }
-    case COLLISION_OF(OBJ_SHIP, OBJ_BEAM):
-    {
-      swap_objects(A, B, tmp);
-    }
     case COLLISION_OF(OBJ_BEAM, OBJ_SHIP):
     {
       if(beam_collide_early_out(A, B))
@@ -448,10 +447,6 @@ bool obj_collide_pair_threaded(object *A, object *B)
       }
       check_collision = beam_collide_ship;
       break;
-    }
-    case COLLISION_OF(OBJ_ASTEROID, OBJ_BEAM):
-    {
-      swap_objects(A, B, tmp);
     }
     case COLLISION_OF(OBJ_BEAM, OBJ_ASTEROID):
     {
@@ -462,10 +457,6 @@ bool obj_collide_pair_threaded(object *A, object *B)
       check_collision = beam_collide_asteroid;
       break;
     }
-    case COLLISION_OF(OBJ_DEBRIS, OBJ_BEAM):
-    {
-      swap_objects(A, B, tmp);
-    }
     case COLLISION_OF(OBJ_BEAM, OBJ_DEBRIS):
     {
       if(beam_collide_early_out(A, B))
@@ -474,10 +465,6 @@ bool obj_collide_pair_threaded(object *A, object *B)
       }
       check_collision = beam_collide_debris;
       break;
-    }
-    case COLLISION_OF(OBJ_WEAPON, OBJ_BEAM):
-    {
-      swap_objects(A, B, tmp);
     }
     case COLLISION_OF(OBJ_BEAM, OBJ_WEAPON):
     {
@@ -638,18 +625,16 @@ bool obj_collide_pair_threaded(object *A, object *B)
   new_pair.check_collision = check_collision;
   new_pair.next_check_time = collision_info->next_check_time;
 
-  //TODO: make this return differently
+  //TODO: ensure new_pair.next_check_time gets set to -1 when processed and returning true
   if(check_collision(&new_pair))
   {
     // don't have to check ever again
-    collision_info->next_check_time = -1;
-    return false;
+    collision_info->next_check_time = new_pair.next_check_time;
+    return true;
   }
   else
   {
     collision_info->next_check_time = new_pair.next_check_time;
     return false;
   }
-  //TODO: placeholder
-  return false;
 }

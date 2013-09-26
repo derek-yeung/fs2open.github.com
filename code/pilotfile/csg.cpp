@@ -197,9 +197,9 @@ void pilotfile::csg_write_info()
 	}
 
 	// medals list
-	cfwrite_int((int)Medals.size(), cfp);
+	cfwrite_int(Num_medals, cfp);
 
-	for (idx = 0; idx < (int)Medals.size(); idx++) {
+	for (idx = 0; idx < Num_medals; idx++) {
 		cfwrite_string_len(Medals[idx].name, cfp);
 	}
 
@@ -1247,7 +1247,7 @@ void pilotfile::csg_reset_data()
 	m_data_invalid = false;
 
 	// init stats
-	init_scoring_element(&p->stats);
+	p->stats.init();
 
 	// zero out allowed ships/weapons
 	memset(Campaign.ships_allowed, 0, sizeof(Campaign.ships_allowed));
@@ -1290,7 +1290,7 @@ void pilotfile::csg_reset_data()
 			mission->variables = NULL;
 		}
 
-		init_scoring_element(&mission->stats);
+		mission->stats.init();
 	}
 }
 
