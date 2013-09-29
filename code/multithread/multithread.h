@@ -22,7 +22,8 @@ typedef struct
 {
     object *object_1;
     object *object_2;
-    unsigned char flags;
+//    unsigned char flags;
+    bool processed;
     void *operation_func;
 } collision_pair;
 

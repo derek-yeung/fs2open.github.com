@@ -42,6 +42,8 @@ extern void game_shutdown(void);
 pthread_attr_t attr;
 pthread_mutex_t collision_master_mutex;
 pthread_cond_t collision_master_condition;
+pthread_mutex_t render_mutex;
+pthread_cond_t render_condition;
 
 SCP_vector <collision_pair> collision_list;
 SCP_vector <int> thread_number;
@@ -73,6 +75,8 @@ void create_threads()
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
   pthread_mutex_init(&collision_master_mutex, NULL);
   pthread_cond_init(&collision_master_condition, NULL);
+  pthread_mutex_init(&render_mutex, NULL);
+  pthread_cond_init(&render_condition, NULL);
 
   conditions.resize(Cmdline_num_threads);
 
@@ -105,6 +109,8 @@ void destroy_threads()
     pthread_mutex_destroy(&(conditions[i].mutex));
     pthread_cond_destroy(&(conditions[i].condition));
   }
+  pthread_mutex_destroy(&render_mutex);
+  pthread_cond_destroy(&render_condition);
   pthread_mutex_destroy(&collision_master_mutex);
   pthread_cond_destroy(&collision_master_condition);
 
@@ -120,9 +126,10 @@ void collision_pair_add(object *object_1, object *object_2)
 {
   collision_pair pair;
 
-  memset(&pair, 0, sizeof(pair));
   pair.object_1 = object_1;
   pair.object_2 = object_2;
+  pair.processed = false;
+  pair.operation_func = NULL;
 
   collision_list.push_back(pair);
 }

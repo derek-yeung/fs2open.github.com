@@ -456,7 +456,7 @@ if test "$fs2_os_osx" = "yes" ; then
 	FS2_LDFLAGS="$FS2_LDFLAGS -framework AppKit -framework Foundation"
 fi
 
-
+FS2_LIBS=$FS2_LIBS" -lpthread"
 
 dnl substitute our default flags
 AC_SUBST(D_CFLAGS)
