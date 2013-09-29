@@ -1,6 +1,8 @@
 #ifndef _MULTITHREAD_H
 #define _MULTITHREAD_H
 
+#include "object/object.h"
+
 #define MULTITHREADING_ENABLED
 //#define MULTITHREADING_ENABLED2
 //#define MULTITHREADING_ENABLED3
@@ -11,38 +13,44 @@
 #define THREAD_WAIT                                         -1
 #define THREAD_EXIT                                         -2
 
-typedef struct
-{
-    pthread_t handle;
-    pthread_mutex_t mutex;
-    pthread_cond_t condition;
+#ifdef MULTITHREADING_ENABLED
+#define OPENGL_LOCK                                         if(threads_alive) {pthread_mutex_lock(&render_mutex);}
+#define OPENGL_UNLOCK                                       if(threads_alive) {pthread_mutex_unlock(&render_mutex);}
+#else
+#define OPENGL_LOCK
+#define OPENGL_UNLOCK
+#endif
+
+typedef struct {
+	pthread_t handle;
+	pthread_mutex_t mutex;
+	pthread_cond_t condition;
 } thread_condition;
 
-typedef struct
-{
-    object *object_1;
-    object *object_2;
+typedef struct {
+	object *object_1;
+	object *object_2;
 //    unsigned char flags;
-    bool processed;
-    void *operation_func;
+	bool processed;
+	void *operation_func;
 } collision_pair;
 
-typedef enum
-{
+typedef enum {
 //  THREAD_TYPE_OBJECT_MOVE,
 //  THREAD_TYPE_DOCKING,
-  THREAD_TYPE_COLLISION,
-  THREAD_TYPE_INVALID
+	THREAD_TYPE_COLLISION,
+	THREAD_TYPE_INVALID
 } thread_type;
 
-typedef enum
-{
-  COLLISION_PAIR_FLAG_COLLIDED,
-  COLLISION_PAIR_FLAG_RESULT,
-  COLLISION_PAIR_FLAG_EXECUTED,
-  COLLISION_PAIR_FLAG_INVALID
-};
+typedef enum {
+	COLLISION_PAIR_FLAG_COLLIDED,
+	COLLISION_PAIR_FLAG_RESULT,
+	COLLISION_PAIR_FLAG_EXECUTED,
+	COLLISION_PAIR_FLAG_INVALID
+} collision_pair_flag;
 
+extern pthread_mutex_t render_mutex;
+extern bool threads_alive;
 
 void create_threads();
 void destroy_threads();

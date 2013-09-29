@@ -69,22 +69,6 @@
 							</tool>
 						</toolChain>
 					</folderInfo>
-					<folderInfo id="cdt.managedbuild.config.gnu.cross.exe.debug.1687257930.842890297" name="/" resourcePath="code/multithread">
-						<toolChain id="cdt.managedbuild.toolchain.gnu.cross.exe.debug.2006877517" name="Cross GCC" superClass="cdt.managedbuild.toolchain.gnu.cross.exe.debug" unusedChildren="">
-							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.42535345" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler.477436674">
-								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1475444374" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
-							</tool>
-							<tool id="cdt.managedbuild.tool.gnu.cross.cpp.compiler.1753949167" name="Cross G++ Compiler" superClass="cdt.managedbuild.tool.gnu.cross.cpp.compiler.1170101869">
-								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1682130618" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
-							</tool>
-							<tool id="cdt.managedbuild.tool.gnu.cross.c.linker.307478677" name="Cross GCC Linker" superClass="cdt.managedbuild.tool.gnu.cross.c.linker.713388835"/>
-							<tool id="cdt.managedbuild.tool.gnu.cross.cpp.linker.1762488832" name="Cross G++ Linker" superClass="cdt.managedbuild.tool.gnu.cross.cpp.linker.1112887381"/>
-							<tool id="cdt.managedbuild.tool.gnu.cross.archiver.1473860144" name="Cross GCC Archiver" superClass="cdt.managedbuild.tool.gnu.cross.archiver.159172115"/>
-							<tool id="cdt.managedbuild.tool.gnu.cross.assembler.1716628643" name="Cross GCC Assembler" superClass="cdt.managedbuild.tool.gnu.cross.assembler.1995861745">
-								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.2024533216" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
-							</tool>
-						</toolChain>
-					</folderInfo>
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
