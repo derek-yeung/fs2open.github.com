@@ -585,6 +585,7 @@ void get_profile_from_history(char* name, float* avg, float* min, float* max);
 // Helper macro to encapsulate a single function call in a profile_begin()/profile_end() pair.
 #define PROFILE(name, function) { profile_begin(name); function; profile_end(name); }
 
+
 //=========================================================
 // Functions to monitor performance
 #ifndef NDEBUG

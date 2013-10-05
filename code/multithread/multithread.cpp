@@ -60,7 +60,8 @@ timespec wait_time = { 2, 0 };
 
 void *supercollider_thread(void *obj_collision_vars_ptr);
 
-void create_threads() {
+void create_threads()
+{
 	int i;
 	collision_pair setup_pair;
 
@@ -81,6 +82,9 @@ void create_threads() {
 	pthread_mutex_init(&render_mutex, &attr_mutex_recursive);
 	pthread_cond_init(&render_condition, NULL);
 
+	if (Cmdline_num_threads < 1) {
+		Cmdline_num_threads = 1;
+	}
 	conditions.resize(Cmdline_num_threads);
 
 	//ensure these numbers are filled before creating our threads
@@ -93,12 +97,12 @@ void create_threads() {
 		thread_collision_vars.push_back(setup_pair);
 		pthread_mutex_init(&(conditions[i].mutex), NULL);
 		pthread_cond_init(&(conditions[i].condition), NULL);
-		pthread_create(&(conditions[i].handle), &attr_thread,
-				supercollider_thread, &(thread_number[i]));
+		pthread_create(&(conditions[i].handle), &attr_thread, supercollider_thread, &(thread_number[i]));
 	}
 }
 
-void destroy_threads() {
+void destroy_threads()
+{
 	int i;
 
 	threads_alive = false;
@@ -119,11 +123,13 @@ void destroy_threads() {
 	pthread_mutexattr_destroy(&attr_mutex_recursive);
 }
 
-void collision_pair_clear() {
+void collision_pair_clear()
+{
 	collision_list.clear();
 }
 
-void collision_pair_add(object *object_1, object *object_2) {
+void collision_pair_add(object *object_1, object *object_2)
+{
 	collision_pair pair;
 
 	pair.object_1 = object_1;
@@ -134,7 +140,8 @@ void collision_pair_add(object *object_1, object *object_2) {
 	collision_list.push_back(pair);
 }
 
-void execute_collisions() {
+void execute_collisions()
+{
 	int i;
 	unsigned int object_counter = 0;
 	unsigned int loop_counter = 0;
@@ -149,8 +156,7 @@ void execute_collisions() {
 
 	while (done == false) {
 		//go through our collision list
-		mprintf(
-				("multithread: execution %d start main loop %d\n", executions, loop_counter));
+		mprintf(("multithread: execution %d start main loop %d\n", executions, loop_counter));
 		if ((time(NULL) - start_time) > SAFETY_TIME) {
 			mprintf(("multithread: execution %d - STUCK\n", executions));
 			Int3();
@@ -163,56 +169,45 @@ void execute_collisions() {
 			game_shutdown();
 			exit(-1);
 		}
-		mprintf(
-				("multithread: execution %d - passed time check\n", executions));
+		mprintf(("multithread: execution %d - passed time check\n", executions));
 		assigned_any = false;
 		object_counter = 0;
 		mprintf(("multithread: execution %d - start list loop\n", executions));
-		for (it = collision_list.begin(); it != collision_list.end();
-				it++, object_counter++) {
+		for (it = collision_list.begin(); it != collision_list.end(); it++, object_counter++) {
 			assigned_once = false;
 			skip = false;
 			if (it->processed == true) {
-				mprintf(
-						("multithread: execution %d object pair %d - skip (already processed)\n", executions, object_counter));
+				mprintf(("multithread: execution %d object pair %d - skip (already processed)\n", executions, object_counter));
 				continue;
 			}
 			//skip if the pairs are obviously wrong
-			if ((it->object_1 == NULL) || (it->object_2 == NULL)
-					|| (it->object_1 == it->object_2)) {
-				mprintf(
-						("multithread: execution %d object pair %d - invalid objects\n", executions, object_counter));
+			if ((it->object_1 == NULL) || (it->object_2 == NULL) || (it->object_1 == it->object_2)) {
+				mprintf(("multithread: execution %d object pair %d - invalid objects\n", executions, object_counter));
 				it->processed = true;
 				continue;
 			}
 
 			//ensure the objects being checked aren't already being used
 			for (i = 0; i < Cmdline_num_threads; i++) {
-				if ((it->object_1 == thread_collision_vars[i].object_1)
-						|| (it->object_1 == thread_collision_vars[i].object_2)
-						|| (it->object_2 == thread_collision_vars[i].object_1)
-						|| (it->object_2 == thread_collision_vars[i].object_2)) {
+				if ((it->object_1 == thread_collision_vars[i].object_1) || (it->object_1 == thread_collision_vars[i].object_2) || (it->object_2 == thread_collision_vars[i].object_1) || (it->object_2 == thread_collision_vars[i].object_2)) {
 					skip = true;
 					break;
 				}
 			}
 
 			if (skip == true) {
-				mprintf(
-						("multithread: execution %d object pair %d - skip (busy)\n", executions, object_counter));
+				mprintf(("multithread: execution %d object pair %d - skip (busy)\n", executions, object_counter));
 				continue;
 			}
 			//check for a free thread to handle the collision
 			for (i = 0; i < Cmdline_num_threads; i++) {
 				if (pthread_mutex_trylock(&(conditions[i].mutex)) == 0) {
 					if (thread_collision_vars[i].processed == false) {
-						mprintf(
-								("multithread: execution %d object pair %d - thread %d busy\n", executions, object_counter, i));
+						mprintf(("multithread: execution %d object pair %d - thread %d busy\n", executions, object_counter, i));
 						pthread_mutex_unlock(&(conditions[i].mutex));
 						continue;
 					}
-					mprintf(
-							("multithread: execution %d object pair %d - passed to thread %d\n", executions, object_counter, i));
+					mprintf(("multithread: execution %d object pair %d - passed to thread %d\n", executions, object_counter, i));
 					thread_collision_vars[i].object_1 = it->object_1;
 					thread_collision_vars[i].object_2 = it->object_2;
 					thread_collision_vars[i].processed = false;
@@ -225,30 +220,23 @@ void execute_collisions() {
 				}
 			}
 
-			mprintf(
-					("multithread: execution %d object pair %d - middle\n", executions, object_counter));
+			mprintf(("multithread: execution %d object pair %d - middle\n", executions, object_counter));
 			if (assigned_once == false) {
-				mprintf(
-						("multithread: execution %d object pair %d - NONE_FREE\n", executions, object_counter));
+				mprintf(("multithread: execution %d object pair %d - NONE_FREE\n", executions, object_counter));
 				Int3();
 				//if there weren't any free threads, wait until one is free - if we wait too long, skip
-				if (pthread_mutex_timedlock(&collision_master_mutex, &wait_time)
-						== 0) {
-					pthread_cond_wait(&collision_master_condition,
-							&collision_master_mutex);
+				if (pthread_mutex_timedlock(&collision_master_mutex, &wait_time) == 0) {
+					pthread_cond_wait(&collision_master_condition, &collision_master_mutex);
 
 					//then check again
 					for (i = 0; i < Cmdline_num_threads; i++) {
-						if (pthread_mutex_trylock(&(conditions[i].mutex))
-								== 0) {
+						if (pthread_mutex_trylock(&(conditions[i].mutex)) == 0) {
 							if (thread_collision_vars[i].processed == false) {
-								mprintf(
-										("multithread: execution %d object pair %d - thread %d busy after wait\n", executions, object_counter, i));
+								mprintf(("multithread: execution %d object pair %d - thread %d busy after wait\n", executions, object_counter, i));
 								pthread_mutex_unlock(&(conditions[i].mutex));
 								continue;
 							}
-							mprintf(
-									("multithread: execution %d object pair %d - processed by thread %d after wait\n", executions, object_counter, i));
+							mprintf(("multithread: execution %d object pair %d - processed by thread %d after wait\n", executions, object_counter, i));
 							thread_collision_vars[i].object_1 = it->object_1;
 							thread_collision_vars[i].object_2 = it->object_2;
 							thread_collision_vars[i].processed = false;
@@ -263,8 +251,7 @@ void execute_collisions() {
 					pthread_mutex_unlock(&collision_master_mutex);
 				} else {
 					//we deadlocked - quit the game
-					mprintf(
-							("multithread: execution %d object pair %d - DEADLOCK\n", executions, object_counter));
+					mprintf(("multithread: execution %d object pair %d - DEADLOCK\n", executions, object_counter));
 					Int3();
 					for (i = 0; i < Cmdline_num_threads; i++) {
 						mprintf(("multithread: destroying thread %d\n", i));
@@ -297,8 +284,7 @@ void execute_collisions() {
 		done = true;
 		for (it = collision_list.begin(); it != collision_list.end(); it++) {
 			if (it->processed == false) {
-				mprintf(
-						("multithread: execution %d - looping back\n", executions));
+				mprintf(("multithread: execution %d - looping back\n", executions));
 				done = false;
 				loop_counter++;
 				break;
@@ -314,30 +300,25 @@ void execute_collisions() {
 	executions++;
 }
 
-void *supercollider_thread(void *num) {
+void *supercollider_thread(void *num)
+{
 	int thread_num = *(int *) num;
 
 	mprintf(("multithread: supercollider_thread %d started\n", thread_num));
 
 	pthread_mutex_lock(&(conditions[thread_num].mutex));
 	while (threads_alive) {
-		mprintf(
-				("multithread: supercollider_thread %d ready\n", thread_num));
-		pthread_cond_wait(&(conditions[thread_num].condition),
-				&(conditions[thread_num].mutex));
+		mprintf(("multithread: supercollider_thread %d ready\n", thread_num));
+		pthread_cond_wait(&(conditions[thread_num].condition), &(conditions[thread_num].mutex));
 
-		mprintf(
-				("multithread: supercollider_thread %d processing\n", thread_num));
-		if ((thread_collision_vars[thread_num].object_1 != NULL)
-				&& (thread_collision_vars[thread_num].object_2 != NULL)) {
-			obj_collide_pair(thread_collision_vars[thread_num].object_1,
-					thread_collision_vars[thread_num].object_2);
+		mprintf(("multithread: supercollider_thread %d processing\n", thread_num));
+		if ((thread_collision_vars[thread_num].object_1 != NULL) && (thread_collision_vars[thread_num].object_2 != NULL)) {
+			obj_collide_pair(thread_collision_vars[thread_num].object_1, thread_collision_vars[thread_num].object_2);
 			thread_collision_vars[thread_num].object_1 = NULL;
 			thread_collision_vars[thread_num].object_2 = NULL;
 		}
 		thread_collision_vars[thread_num].processed = true;
 		mprintf(("multithread: supercollider_thread %d done\n", thread_num));
-
 
 		pthread_mutex_lock(&collision_master_mutex);
 		pthread_cond_signal(&collision_master_condition);

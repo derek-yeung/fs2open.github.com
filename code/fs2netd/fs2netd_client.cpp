@@ -1560,7 +1560,7 @@ void fs2netd_add_table_validation(const char *tblname)
 
 	crc_valid_status tbl_crc;
 
-	strncpy(tbl_crc.name, tblname, NAME_LENGTH);
+	strcpy_s(tbl_crc.name, tblname);
 	tbl_crc.crc32 = chksum;
 	tbl_crc.valid = 0;
 
@@ -1609,7 +1609,7 @@ int fs2netd_get_pilot_info(const char *callsign, player *out_plr, bool first_cal
 	}
 
 	if (rc == 0) {
-		memcpy( out_plr, &new_plr, sizeof(player) );
+		out_plr->assign(&new_plr);
 		In_process = false;
 		Local_timeout = -1;
 	}
