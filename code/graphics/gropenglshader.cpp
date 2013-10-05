@@ -712,6 +712,11 @@ GLint opengl_shader_get_uniform(const char *uniform_text)
 	SCP_vector<opengl_shader_uniform_t>::iterator uniform;
 
 	for (uniform = Current_shader->uniforms.begin(); uniform != Current_shader->uniforms.end(); ++uniform) {
+	  /*
+	   * cast first 2 characters to short and compare - a bit quicker since the
+	   *  uniform list is significant and have differences in at least 1 of the 2
+	   *  characters
+	   */
     if(*(unsigned short *)uniform->text_id.c_str() == *(unsigned short *)uniform_text)
     {
       if ( !uniform->text_id.compare(uniform_text) ) {

@@ -1392,6 +1392,11 @@
 			<locationURI>PARENT-3-PROJECT_LOC/code/globalincs/mspdb_callstack.h</locationURI>
 		</link>
 		<link>
+			<name>code/globalincs/profiling.cpp</name>
+			<type>1</type>
+			<locationURI>PARENT-3-PROJECT_LOC/code/globalincs/profiling.cpp</locationURI>
+		</link>
+		<link>
 			<name>code/globalincs/pstypes.h</name>
 			<type>1</type>
 			<locationURI>PARENT-3-PROJECT_LOC/code/globalincs/pstypes.h</locationURI>
