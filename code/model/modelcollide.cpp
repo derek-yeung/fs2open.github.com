@@ -29,7 +29,7 @@
 // not persistant between calls to model_collide
 
 static mc_info		*Mc;				// The mc_info passed into model_collide
-	
+
 static polymodel	*Mc_pm;			// The polygon model we're checking
 static int			Mc_submodel;	// The current submodel we're checking
 
@@ -47,31 +47,6 @@ static vec3d		Mc_direction;	// A vector from the ray's origin to its end, in the
 static vec3d 		**Mc_point_list = NULL;		// A pointer to the current submodel's vertex list
 
 static float		Mc_edge_time;
-
-
-void model_collide_free_point_list()
-{
-	if (Mc_point_list != NULL) {
-		vm_free(Mc_point_list);
-		Mc_point_list = NULL;
-	}
-}
-
-// allocate the point list
-// NOTE: SHOULD ONLY EVER BE CALLED FROM model_allocate_interp_data()!!!
-void model_collide_allocate_point_list(int n_points)
-{
-	Assert( n_points > 0 );
-
-	if (Mc_point_list != NULL) {
-		vm_free(Mc_point_list);
-		Mc_point_list = NULL;
-	}
-
-	Mc_point_list = (vec3d**) vm_malloc( sizeof(vec3d) * n_points );
-
-	Verify( Mc_point_list != NULL );
-}
 
 // Returns non-zero if vector from p0 to pdir 
 // intersects the bounding box.
@@ -523,7 +498,6 @@ inline int model_collide_sub(void *model_ptr )
 //		mprintf(( "Processing chunk type %d, len=%d\n", chunk_type, chunk_size ));
 
 		switch (chunk_type) {
-		case OP_EOF: return 1;
 		case OP_DEFPOINTS:	model_collide_defpoints(p); break;
 		case OP_FLATPOLY:		model_collide_flatpoly(p); break;
 		case OP_TMAPPOLY:		model_collide_tmappoly(p); break;

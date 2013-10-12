@@ -10,7 +10,7 @@
 #include "io/timer.h"
 #include "jumpnode/jumpnode.h"
 #include "lighting/lighting.h"
-#include "mission/missionparse.h" //For 2D Mode
+#include "mission/missionparse.h"
 #include "network/multi.h"
 #include "network/multiutil.h"
 #include "object/objcollide.h"
