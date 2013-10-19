@@ -29,7 +29,7 @@ EXTRA_DIST =	\
 
 
 # D_ variants are defaults and should always be used
-AM_CXXFLAGS = -I./code @D_CFLAGS@
+AM_CXXFLAGS = -I./code -I./mongoose @D_CFLAGS@
 AM_LDFLAGS = @D_LDFLAGS@
 
 EXTRA_PROGRAMS = cfilearchiver cfileextractor
