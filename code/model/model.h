@@ -1272,4 +1272,32 @@ void model_finish_cloak(int full_cloak);
 void model_do_look_at(int model_num); //Bobboau
 
 void model_do_dumb_rotation(int modelnum); //Bobboau
+
+class model_collision
+{
+public:
+	mc_info *MC_info;								// The mc_info passed into model_collide
+	polymodel *MC_polymodel;						// The polygon model we're checking
+	int MC_submodel;								// The current submodel we're checking
+	polymodel_instance *MC_pmi;
+	matrix MC_orient;								// A matrix to rotate a world point into the current submodel's frame of reference.
+	vec3d MC_base;									// A point used along with MC_orient.
+	vec3d MC_p0;									// The ray origin rotated into the current submodel's frame of reference
+	vec3d MC_p1;									// The ray end rotated into the current submodel's frame of reference
+	float MC_mag;									// The length of the ray
+	vec3d MC_direction;								// A vector from the ray's origin to its end, in the current submodel's frame of reference
+	//TODO: can be safely allocated a bit chunk of memory in model_collide()
+//	vec3d **MC_point_list;							// A pointer to the current submodel's vertex list
+	SCP_vector <vec3d *> MC_point_list;							// A pointer to the current submodel's vertex list
+
+//	model_collision(): MC_info(NULL), MC_polymodel(NULL), MC_submodel(-1), MC_pmi(NULL), MC_mag(0.0), MC_point_list(NULL)
+	model_collision(): MC_info(NULL), MC_polymodel(NULL), MC_submodel(-1), MC_pmi(NULL), MC_mag(0.0)
+	{
+		memset(&MC_orient, 0, sizeof(MC_orient));
+		memset(&MC_base, 0, sizeof(MC_base));
+		memset(&MC_p0, 0, sizeof(MC_p0));
+		memset(&MC_p1, 0, sizeof(MC_p1));
+		memset(&MC_direction, 0, sizeof(MC_direction));
+	}
+};
 #endif // _MODEL_H

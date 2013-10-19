@@ -2428,6 +2428,7 @@ int model_load(char *filename, int n_subsystems, model_subsystem *subsystems, in
 {
 	int i, num, arc_idx;
 	polymodel *pm = NULL;
+	model_collision bsp_collision_data;
 
 	if ( !model_initted )
 		model_init();
