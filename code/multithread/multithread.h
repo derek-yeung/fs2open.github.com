@@ -6,16 +6,16 @@
 #define MULTITHREADING_ENABLED
 //#define MULTITHREADING_ENABLED2
 //#define MULTITHREADING_ENABLED3
-#define MAX_THREADS                                         256
+#define MAX_THREADS											256
 
-#define SAFETY_TIME                                         5
+#define SAFETY_TIME											2
 
-#define THREAD_WAIT                                         -1
-#define THREAD_EXIT                                         -2
+#define THREAD_WAIT											-1
+#define THREAD_EXIT											-2
 
 #ifdef MULTITHREADING_ENABLED
-#define OPENGL_LOCK                                         if(threads_alive) {pthread_mutex_lock(&render_mutex);}
-#define OPENGL_UNLOCK                                       if(threads_alive) {pthread_mutex_unlock(&render_mutex);}
+#define OPENGL_LOCK											{pthread_mutex_lock(&render_mutex);}
+#define OPENGL_UNLOCK										{pthread_mutex_unlock(&render_mutex);}
 #else
 #define OPENGL_LOCK
 #define OPENGL_UNLOCK

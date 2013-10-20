@@ -48,13 +48,14 @@ pthread_mutex_t render_mutex;
 pthread_cond_t render_condition;
 
 SCP_vector<collision_pair> collision_list;
-SCP_vector<int> thread_number;
+SCP_vector<unsigned int> thread_number;
 SCP_vector<collision_pair> thread_collision_vars;
 SCP_vector<thread_condition> conditions;
 
 bool threads_alive = false;
 
 unsigned int executions = 0;
+unsigned int threads_used_record = 0;
 
 timespec wait_time = { 2, 0 };
 
@@ -149,6 +150,7 @@ void execute_collisions()
 	bool assigned_any, assigned_once = false;
 	bool done = false;
 	bool skip = false;
+	unsigned int threads_used = 1;
 
 	time_t start_time = time(NULL);
 
@@ -177,7 +179,7 @@ void execute_collisions()
 			assigned_once = false;
 			skip = false;
 			if (it->processed == true) {
-				mprintf(("multithread: execution %d object pair %d - skip (already processed)\n", executions, object_counter));
+//				mprintf(("multithread: execution %d object pair %d - skip (already processed)\n", executions, object_counter));
 				continue;
 			}
 			//skip if the pairs are obviously wrong
@@ -196,7 +198,7 @@ void execute_collisions()
 			}
 
 			if (skip == true) {
-				mprintf(("multithread: execution %d object pair %d - skip (busy)\n", executions, object_counter));
+//				mprintf(("multithread: execution %d object pair %d - skip (busy)\n", executions, object_counter));
 				continue;
 			}
 			//check for a free thread to handle the collision
@@ -207,7 +209,7 @@ void execute_collisions()
 						pthread_mutex_unlock(&(conditions[i].mutex));
 						continue;
 					}
-					mprintf(("multithread: execution %d object pair %d - passed to thread %d\n", executions, object_counter, i));
+//					mprintf(("multithread: execution %d object pair %d - passed to thread %d\n", executions, object_counter, i));
 					thread_collision_vars[i].object_1 = it->object_1;
 					thread_collision_vars[i].object_2 = it->object_2;
 					thread_collision_vars[i].processed = false;
@@ -216,11 +218,15 @@ void execute_collisions()
 					pthread_cond_signal(&(conditions[i].condition));
 					pthread_mutex_unlock(&(conditions[i].mutex));
 					assigned_once = true;
+					if((i + 1) > threads_used)
+					{
+						threads_used = (i + 1);
+					}
 					break;
 				}
 			}
 
-			mprintf(("multithread: execution %d object pair %d - middle\n", executions, object_counter));
+//			mprintf(("multithread: execution %d object pair %d - middle\n", executions, object_counter));
 			if (assigned_once == false) {
 				mprintf(("multithread: execution %d object pair %d - NONE_FREE\n", executions, object_counter));
 				Int3();
@@ -245,6 +251,10 @@ void execute_collisions()
 							pthread_cond_signal(&(conditions[i].condition));
 							pthread_mutex_unlock(&(conditions[i].mutex));
 							assigned_once = true;
+							if((i + 1) > threads_used)
+							{
+								threads_used = (i + 1);
+							}
 							break;
 						}
 					}
@@ -291,6 +301,11 @@ void execute_collisions()
 			}
 		}
 	}
+	if(threads_used > threads_used_record)
+	{
+		threads_used_record = threads_used;
+	}
+	mprintf(("multithread: execution %d - %d threads used - record is % threads used\n", executions, threads_used, threads_used_record));
 
 	//make sure all the threads are done executing
 	for (i = 0; i < Cmdline_num_threads; i++) {
@@ -308,17 +323,17 @@ void *supercollider_thread(void *num)
 
 	pthread_mutex_lock(&(conditions[thread_num].mutex));
 	while (threads_alive) {
-		mprintf(("multithread: supercollider_thread %d ready\n", thread_num));
+//		mprintf(("multithread: supercollider_thread %d ready\n", thread_num));
 		pthread_cond_wait(&(conditions[thread_num].condition), &(conditions[thread_num].mutex));
 
-		mprintf(("multithread: supercollider_thread %d processing\n", thread_num));
+//		mprintf(("multithread: supercollider_thread %d processing\n", thread_num));
 		if ((thread_collision_vars[thread_num].object_1 != NULL) && (thread_collision_vars[thread_num].object_2 != NULL)) {
 			obj_collide_pair(thread_collision_vars[thread_num].object_1, thread_collision_vars[thread_num].object_2);
 			thread_collision_vars[thread_num].object_1 = NULL;
 			thread_collision_vars[thread_num].object_2 = NULL;
 		}
 		thread_collision_vars[thread_num].processed = true;
-		mprintf(("multithread: supercollider_thread %d done\n", thread_num));
+//		mprintf(("multithread: supercollider_thread %d done\n", thread_num));
 
 		pthread_mutex_lock(&collision_master_mutex);
 		pthread_cond_signal(&collision_master_condition);

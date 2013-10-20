@@ -51,6 +51,8 @@ int GL_version = 0;
 
 bool GL_initted = 0;
 
+unsigned int lock_number = 0;
+
 //0==no fog
 //1==linear
 //2==fog coord EXT
@@ -1447,8 +1449,8 @@ const char *opengl_error_string()
 		return (const char *) gluErrorString(error);
 	}
 
-	return NULL;
 	OPENGL_UNLOCK;
+	return NULL;
 }
 
 int opengl_check_for_errors(char *err_at)
