@@ -39,6 +39,8 @@ extern int Cmdline_num_threads;
 
 extern void game_shutdown(void);
 
+extern int G3_count;
+
 pthread_attr_t attr_thread;
 pthread_mutexattr_t attr_mutex;
 pthread_mutexattr_t attr_mutex_recursive;
@@ -55,7 +57,7 @@ SCP_vector<thread_condition> conditions;
 bool threads_alive = false;
 
 unsigned int executions = 0;
-unsigned int threads_used_record = 0;
+int threads_used_record = 0;
 
 timespec wait_time = { 2, 0 };
 
@@ -150,10 +152,14 @@ void execute_collisions()
 	bool assigned_any, assigned_once = false;
 	bool done = false;
 	bool skip = false;
-	unsigned int threads_used = 1;
+	int threads_used = 1;
 
 	time_t start_time = time(NULL);
 
+	OPENGL_LOCK
+	if(!G3_count){
+		g3_start_frame(1);
+	}
 	mprintf(("multithread: execution %d start\n", executions));
 
 	while (done == false) {
@@ -313,6 +319,8 @@ void execute_collisions()
 		pthread_mutex_unlock(&(conditions[i].mutex));
 	}
 	executions++;
+	g3_end_frame();
+	OPENGL_UNLOCK
 }
 
 void *supercollider_thread(void *num)
