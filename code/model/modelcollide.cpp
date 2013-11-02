@@ -706,7 +706,6 @@ void model_collide_parse_bsp(bsp_collision_tree *tree, void *model_ptr, int vers
 
 	Assert(chunk_type == OP_DEFPOINTS);
 
-	//TODO: there's probably a better way to do this - we only use the vector
 	int n_verts = model_collide_parse_bsp_defpoints(&MC_struct, p);
 
 	if ( n_verts <= 0) {

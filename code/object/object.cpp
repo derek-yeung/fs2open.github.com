@@ -104,6 +104,58 @@ obj_flag_name Object_flag_names[] = {
 	{OF_IMMOBILE,				"immobile",					1,	},
 };
 
+// all we need to set are the pointers, but type, parent, and instance are useful to set as well
+object::object()
+	: next(NULL), prev(NULL), type(OBJ_NONE), parent(-1), instance(-1), dock_list(NULL), dead_dock_list(NULL)
+{}
+
+object::~object()
+{
+	objsnd_num.clear();
+
+	if (dock_list != NULL)
+	{
+		mprintf(("dock_list should have been cleared already!\n"));
+		dock_instance *ptr = dock_list;
+		while (ptr != NULL)
+		{
+			dock_instance *nextptr = ptr->next;
+			vm_free(ptr);
+			ptr = nextptr;
+		}
+	}
+	if (dead_dock_list != NULL)
+	{
+		mprintf(("dead_dock_list should have been cleared already!\n"));
+		dock_instance *ptr = dead_dock_list;
+		while (ptr != NULL)
+		{
+			dock_instance *nextptr = ptr->next;
+			vm_free(ptr);
+			ptr = nextptr;
+		}
+	}
+}
+
+// DO NOT set next and prev to NULL because they keep the object on the free and used lists
+void object::clear()
+{
+	signature = num_pairs = collision_group_id = 0;
+	parent = parent_sig = instance = -1;
+	type = parent_type = OBJ_NONE;
+	flags = 0;
+	pos = last_pos = vmd_zero_vector;
+	orient = last_orient = vmd_identity_matrix;
+	radius = hull_strength = sim_hull_strength = 0.0f;
+	physics_init( &phys_info );
+	memset(shield_quadrant, 0, MAX_SHIELD_SECTIONS * sizeof(float));
+	objsnd_num.clear();
+	net_signature = 0;
+
+	Assertion(dock_list == NULL, "dock_list should have been cleared already!");
+	Assertion(dead_dock_list == NULL, "dead_dock_list should have been cleared already!");
+}
+
 /**
  * Scan the object list, freeing down to num_used objects
  *

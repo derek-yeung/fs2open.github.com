@@ -45,7 +45,7 @@ pthread_mutexattr_t attr_mutex_recursive;
 pthread_mutex_t collision_master_mutex;
 pthread_cond_t collision_master_condition;
 pthread_mutex_t render_mutex;
-pthread_cond_t render_condition;
+pthread_mutex_t g3_count_mutex;
 
 SCP_vector<collision_pair> collision_list;
 SCP_vector<unsigned int> thread_number;
@@ -81,7 +81,7 @@ void create_threads()
 	pthread_mutex_init(&collision_master_mutex, NULL);
 	pthread_cond_init(&collision_master_condition, NULL);
 	pthread_mutex_init(&render_mutex, &attr_mutex_recursive);
-	pthread_cond_init(&render_condition, NULL);
+	pthread_mutex_init(&g3_count_mutex, &attr_mutex_recursive);
 
 	if (Cmdline_num_threads < 1) {
 		Cmdline_num_threads = 1;
@@ -115,7 +115,7 @@ void destroy_threads()
 		pthread_cond_destroy(&(conditions[i].condition));
 	}
 	pthread_mutex_destroy(&render_mutex);
-	pthread_cond_destroy(&render_condition);
+	pthread_mutex_destroy(&g3_count_mutex);
 	pthread_mutex_destroy(&collision_master_mutex);
 	pthread_cond_destroy(&collision_master_condition);
 
@@ -171,10 +171,10 @@ void execute_collisions()
 			game_shutdown();
 			exit(-1);
 		}
-		mprintf(("multithread: execution %d - passed time check\n", executions));
+//		mprintf(("multithread: execution %d - passed time check\n", executions));
 		assigned_any = false;
 		object_counter = 0;
-		mprintf(("multithread: execution %d - start list loop\n", executions));
+//		mprintf(("multithread: execution %d - start list loop\n", executions));
 		for (it = collision_list.begin(); it != collision_list.end(); it++, object_counter++) {
 			assigned_once = false;
 			skip = false;
@@ -277,7 +277,7 @@ void execute_collisions()
 				assigned_any = true;
 			}
 		}
-		mprintf(("multithread: execution %d - end list loop\n", executions));
+//		mprintf(("multithread: execution %d - end list loop\n", executions));
 //		if (assigned_any == false) {
 //			mprintf(("multithread: execution %d - INVALID\n", executions));
 //			Int3();
@@ -288,7 +288,7 @@ void execute_collisions()
 //				pthread_cond_destroy(&(conditions[i].condition));
 //			}
 //		}
-		mprintf(("multithread: execution %d - final check\n", executions));
+//		mprintf(("multithread: execution %d - final check\n", executions));
 
 		//make sure we processs everything on the list
 		done = true;
@@ -305,7 +305,7 @@ void execute_collisions()
 	{
 		threads_used_record = threads_used;
 	}
-	mprintf(("multithread: execution %d - %d threads used - record is % threads used\n", executions, threads_used, threads_used_record));
+	mprintf(("multithread: execution %d - %d threads used - record is %d threads used\n", executions, threads_used, threads_used_record));
 
 	//make sure all the threads are done executing
 	for (i = 0; i < Cmdline_num_threads; i++) {

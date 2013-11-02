@@ -1871,72 +1871,72 @@ MONITOR( NumHiModelsRend )
 MONITOR( NumMedModelsRend )
 MONITOR( NumLowModelsRend )
 
-/**
- * Draws a bitmap with the specified 3d width & height 
- * @return 1 if off screen, 0 if not
- */
-int model_get_rotated_bitmap_points(vertex *pnt,float angle, float rad, vertex *v)
-{
-	float sa, ca;
-	int i;
-
-	Assert( G3_count == 1 );
-		
-	sa = (float)sin(angle);
-	ca = (float)cos(angle);
-
-	float width, height;
-
-	width = height = rad;
-
-	v[0].world.xyz.x = (-width*ca - height*sa)*Matrix_scale.xyz.x + pnt->world.xyz.x;
-	v[0].world.xyz.y = (-width*sa + height*ca)*Matrix_scale.xyz.y + pnt->world.xyz.y;
-	v[0].world.xyz.z = pnt->world.xyz.z;
-	v[0].screen.xyw.w = 0.0f;
-	v[0].texture_position.u = 0.0f;
-	v[0].texture_position.v = 0.0f;
-
-	v[1].world.xyz.x = (width*ca - height*sa)*Matrix_scale.xyz.x + pnt->world.xyz.x;
-	v[1].world.xyz.y = (width*sa + height*ca)*Matrix_scale.xyz.y + pnt->world.xyz.y;
-	v[1].world.xyz.z = pnt->world.xyz.z;
-	v[1].screen.xyw.w = 0.0f;
-	v[1].texture_position.u = 1.0f;
-	v[1].texture_position.v = 0.0f;
-
-	v[2].world.xyz.x = (width*ca + height*sa)*Matrix_scale.xyz.x + pnt->world.xyz.x;
-	v[2].world.xyz.y = (width*sa - height*ca)*Matrix_scale.xyz.y + pnt->world.xyz.y;
-	v[2].world.xyz.z = pnt->world.xyz.z;
-	v[2].screen.xyw.w = 0.0f;
-	v[2].texture_position.u = 1.0f;
-	v[2].texture_position.v = 1.0f;
-
-	v[3].world.xyz.x = (-width*ca + height*sa)*Matrix_scale.xyz.x + pnt->world.xyz.x;
-	v[3].world.xyz.y = (-width*sa - height*ca)*Matrix_scale.xyz.y + pnt->world.xyz.y;
-	v[3].world.xyz.z = pnt->world.xyz.z;
-	v[3].screen.xyw.w = 0.0f;
-	v[3].texture_position.u = 0.0f;
-	v[3].texture_position.v = 1.0f;
-
-	ubyte codes_and=0xff;
-
-	float sw,z;
-	z = pnt->world.xyz.z - rad / 4.0f;
-	if ( z < 0.0f ) z = 0.0f;
-	sw = 1.0f / z;
-
-	for (i=0; i<4; i++ )	{
-		//now code the four points
-		codes_and &= g3_code_vertex(&v[i]);
-		v[i].flags = 0;		// mark as not yet projected
-		g3_project_vertex(&v[i]);
-		v[i].screen.xyw.w = sw;
-	}
-
-	if (codes_and)
-		return 1;		//1 means off screen
-
-	return 0;
-}
+///**
+// * Draws a bitmap with the specified 3d width & height
+// * @return 1 if off screen, 0 if not
+// */
+//int model_get_rotated_bitmap_points(vertex *pnt,float angle, float rad, vertex *v)
+//{
+//	float sa, ca;
+//	int i;
+//
+//	Assert( G3_count == 1 );
+//
+//	sa = (float)sin(angle);
+//	ca = (float)cos(angle);
+//
+//	float width, height;
+//
+//	width = height = rad;
+//
+//	v[0].world.xyz.x = (-width*ca - height*sa)*Matrix_scale.xyz.x + pnt->world.xyz.x;
+//	v[0].world.xyz.y = (-width*sa + height*ca)*Matrix_scale.xyz.y + pnt->world.xyz.y;
+//	v[0].world.xyz.z = pnt->world.xyz.z;
+//	v[0].screen.xyw.w = 0.0f;
+//	v[0].texture_position.u = 0.0f;
+//	v[0].texture_position.v = 0.0f;
+//
+//	v[1].world.xyz.x = (width*ca - height*sa)*Matrix_scale.xyz.x + pnt->world.xyz.x;
+//	v[1].world.xyz.y = (width*sa + height*ca)*Matrix_scale.xyz.y + pnt->world.xyz.y;
+//	v[1].world.xyz.z = pnt->world.xyz.z;
+//	v[1].screen.xyw.w = 0.0f;
+//	v[1].texture_position.u = 1.0f;
+//	v[1].texture_position.v = 0.0f;
+//
+//	v[2].world.xyz.x = (width*ca + height*sa)*Matrix_scale.xyz.x + pnt->world.xyz.x;
+//	v[2].world.xyz.y = (width*sa - height*ca)*Matrix_scale.xyz.y + pnt->world.xyz.y;
+//	v[2].world.xyz.z = pnt->world.xyz.z;
+//	v[2].screen.xyw.w = 0.0f;
+//	v[2].texture_position.u = 1.0f;
+//	v[2].texture_position.v = 1.0f;
+//
+//	v[3].world.xyz.x = (-width*ca + height*sa)*Matrix_scale.xyz.x + pnt->world.xyz.x;
+//	v[3].world.xyz.y = (-width*sa - height*ca)*Matrix_scale.xyz.y + pnt->world.xyz.y;
+//	v[3].world.xyz.z = pnt->world.xyz.z;
+//	v[3].screen.xyw.w = 0.0f;
+//	v[3].texture_position.u = 0.0f;
+//	v[3].texture_position.v = 1.0f;
+//
+//	ubyte codes_and=0xff;
+//
+//	float sw,z;
+//	z = pnt->world.xyz.z - rad / 4.0f;
+//	if ( z < 0.0f ) z = 0.0f;
+//	sw = 1.0f / z;
+//
+//	for (i=0; i<4; i++ )	{
+//		//now code the four points
+//		codes_and &= g3_code_vertex(&v[i]);
+//		v[i].flags = 0;		// mark as not yet projected
+//		g3_project_vertex(&v[i]);
+//		v[i].screen.xyw.w = sw;
+//	}
+//
+//	if (codes_and)
+//		return 1;		//1 means off screen
+//
+//	return 0;
+//}
 
 float Interp_depth_scale = 1500.0f;
 
@@ -4179,6 +4179,11 @@ void interp_configure_vertex_buffers(polymodel *pm, int mn)
 
 	for (i = 0; i < MAX_MODEL_TEXTURES; i++) {
 		total_verts += tri_count[i];
+
+		// for the moment we can only support INT_MAX worth of verts per index buffer
+		if (total_verts > INT_MAX) {
+			Error( LOCATION, "Unable to generate vertex buffer data because model '%s' with %i verts is over the maximum of %i verts!\n", pm->filename, total_verts, INT_MAX);
+		}
 	}
 
 	if (total_verts < 1) {

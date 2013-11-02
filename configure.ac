@@ -400,7 +400,7 @@ elif test "$fs2_os_solaris" = "yes" ; then
 fi
 
 dnl JANSSON
-PKG_CHECK_MODULES([JANSSON], [jansson >= 2.4])
+PKG_CHECK_MODULES([JANSSON], [jansson >= 2.2])
 D_CFLAGS=$D_CFLAGS" $JANSSON_CFLAGS"
 FS2_LIBS=$FS2_LIBS" $JANSSON_LIBS"
 
@@ -447,9 +447,11 @@ if test "$fs2_os_linux" = "yes" || test "$fs2_os_osx" = "yes" || test "$fs2_os_b
 	fi
 fi
 
+if test "$fs2_os_bsd" != "yes" ; then
 dnl Dynamic Linking
 AC_SEARCH_LIBS([dlsym], [dl])
 FS2_LIBS=$FS2_LIBS" -ldl"
+fi
 
 dnl Posix Threads
 AC_SEARCH_LIBS([pthread_mutex_timedlock], [pthread])

@@ -16,9 +16,13 @@
 #ifdef MULTITHREADING_ENABLED
 #define OPENGL_LOCK											{pthread_mutex_lock(&render_mutex);}
 #define OPENGL_UNLOCK										{pthread_mutex_unlock(&render_mutex);}
+#define G3_COUNT_LOCK										{pthread_mutex_lock(&g3_count_mutex);}
+#define G3_COUNT_UNLOCK										{pthread_mutex_unlock(&g3_count_mutex);}
 #else
 #define OPENGL_LOCK
 #define OPENGL_UNLOCK
+#define G3_COUNT_LOCK
+#define G3_COUNT_UNLOCK
 #endif
 
 typedef struct {
@@ -50,6 +54,7 @@ typedef enum {
 } collision_pair_flag;
 
 extern pthread_mutex_t render_mutex;
+extern pthread_mutex_t g3_count_mutex;
 extern bool threads_alive;
 
 void create_threads();
