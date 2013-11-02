@@ -343,7 +343,8 @@ void obj_init()
 	object *objp;
 	
 	Object_inited = 1;
-	memset( Objects, 0, sizeof(object)*MAX_OBJECTS );
+	for (i = 0; i < MAX_OBJECTS; ++i)
+		Objects[i].clear();
 	Viewer_obj = NULL;
 
 	list_init( &obj_free_list );
@@ -353,10 +354,6 @@ void obj_init()
 	// Link all object slots into the free list
 	objp = Objects;
 	for (i=0; i<MAX_OBJECTS; i++)	{
-		objp->type = OBJ_NONE;
-		objp->signature = i + 100;
-		objp->collision_group_id = 0;
-		
 		list_append(&obj_free_list, objp);
 		objp++;
 	}
@@ -388,7 +385,10 @@ int obj_allocate(void)
 	int objnum;
 	object *objp;
 
-	if (!Object_inited) obj_init();
+	if (!Object_inited) {
+		mprintf(("Why hasn't obj_init() been called yet?\n"));
+		obj_init();
+	}
 
 	if ( Num_objects >= MAX_OBJECTS-10 ) {
 		int	num_freed;
@@ -443,7 +443,10 @@ void obj_free(int objnum)
 {
 	object *objp;
 
-	if (!Object_inited) obj_init();
+	if (!Object_inited) {
+		mprintf(("Why hasn't obj_init() been called yet?\n"));
+		obj_init();
+	}
 
 	Assert( objnum >= 0 );	// Trying to free bogus object!!!
 
@@ -489,6 +492,9 @@ int obj_create(ubyte type,int parent_obj,int instance, matrix * orient,
 	obj = &Objects[objnum];
 	Assert(obj->type == OBJ_NONE);		//make sure unused 
 
+	// clear object in preparation for setting of custom values
+	obj->clear();
+
 	Assert(Object_next_signature > 0);	// 0 is bogus!
 	obj->signature = Object_next_signature++;
 
@@ -509,21 +515,11 @@ int obj_create(ubyte type,int parent_obj,int instance, matrix * orient,
 		obj->last_pos			= *pos;
 	}
 
-	obj->orient 				= orient?*orient:vmd_identity_matrix;
-	obj->last_orient			= obj->orient;
+	if (orient)	{
+		obj->orient 			= *orient;
+		obj->last_orient		= *orient;
+	}
 	obj->radius 				= radius;
-
-	obj->flags &= ~OF_INVULNERABLE;		//	Make vulnerable.
-	physics_init( &obj->phys_info );
-
-	obj->num_pairs = 0;
-	obj->net_signature = 0;			// be sure to reset this value so new objects don't take on old signatures.	
-
-	obj->collision_group_id = 0;
-
-	// Goober5000
-	obj->dock_list = NULL;
-	obj->dead_dock_list = NULL;
 
 	return objnum;
 }
@@ -636,7 +632,10 @@ void obj_delete_all_that_should_be_dead()
 {
 	object *objp, *temp;
 
-	if (!Object_inited) obj_init();
+	if (!Object_inited) {
+		mprintf(("Why hasn't obj_init() been called yet?\n"));
+		obj_init();
+	}
 
 	// Move all objects
 	objp = GET_FIRST(&obj_used_list);
@@ -1969,6 +1968,8 @@ bool object_glide_forced(object *objp)
  */
 int obj_get_by_signature(int sig)
 {
+	Assert(sig > 0);
+
 	object *objp = GET_FIRST(&obj_used_list);
 	while( objp !=END_OF_LIST(&obj_used_list) )
 	{

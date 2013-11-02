@@ -1566,11 +1566,11 @@ bool SetCmdlineParams()
 		Cmdline_deprecated_jpgtga = 1;
 	}
 
-  if ( num_threads_arg.found() )
-  {
-    Cmdline_num_threads = num_threads_arg.get_int();
-    CLAMP(Cmdline_num_threads, 0, 255);
-  }
+	if (num_threads_arg.found())
+	{
+		Cmdline_num_threads = num_threads_arg.get_int();
+		CLAMP(Cmdline_num_threads, 0, 255);
+	}
 
 	return true; 
 }
