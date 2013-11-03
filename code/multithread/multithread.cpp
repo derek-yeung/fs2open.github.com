@@ -98,7 +98,7 @@ void create_threads()
 	}
 
 	for (i = 0; i < Cmdline_num_threads; i++) {
-		mprintf(("multithread: Creating thread %d\n", i));
+		nprintf(("Multithread", "multithread: Creating thread %d\n", i));
 		thread_collision_vars.push_back(setup_pair);
 		pthread_mutex_init(&(conditions[i].mutex), NULL);
 		pthread_cond_init(&(conditions[i].condition), NULL);
@@ -113,7 +113,7 @@ void destroy_threads()
 	threads_alive = false;
 	//kill our threads, they shouldn't be doing anything anyway
 	for (i = 0; i < Cmdline_num_threads; i++) {
-		mprintf(("multithread: destroying thread %d\n", i));
+		nprintf(("Multithread", "multithread: destroying thread %d\n", i));
 		pthread_cancel(conditions[i].handle);
 		pthread_mutex_destroy(&(conditions[i].mutex));
 		pthread_cond_destroy(&(conditions[i].condition));
@@ -162,13 +162,13 @@ void execute_collisions()
 	if(!G3_count){
 		g3_start_frame(1);
 	}
-	mprintf(("multithread: execution %d start\n", executions));
+	nprintf(("Multithread", "multithread: execution %d start\n", executions));
 
 	while (done == false) {
 		//go through our collision list
-		mprintf(("multithread: execution %d start main loop %d\n", executions, loop_counter));
+		nprintf(("Multithread", "multithread: execution %d start main loop %d\n", executions, loop_counter));
 		if ((time(NULL) - start_time) > SAFETY_TIME) {
-			mprintf(("multithread: execution %d - STUCK\n", executions));
+			nprintf(("Multithread", "multithread: execution %d - STUCK\n", executions));
 			Int3();
 			for (i = 0; i < Cmdline_num_threads; i++) {
 				mprintf(("multithread: destroying thread %d\n", i));
@@ -176,7 +176,7 @@ void execute_collisions()
 				pthread_mutex_destroy(&(conditions[i].mutex));
 				pthread_cond_destroy(&(conditions[i].condition));
 			}
-			game_shutdown();
+			Error(LOCATION, "Encountered fatal error in multithreading\n");
 			exit(-1);
 		}
 //		mprintf(("multithread: execution %d - passed time check\n", executions));
@@ -192,7 +192,7 @@ void execute_collisions()
 			}
 			//skip if the pairs are obviously wrong
 			if ((it->object_1 == NULL) || (it->object_2 == NULL) || (it->object_1 == it->object_2)) {
-				mprintf(("multithread: execution %d object pair %d - invalid objects\n", executions, object_counter));
+				nprintf(("Multithread", "multithread: execution %d object pair %d - invalid objects\n", executions, object_counter));
 				it->processed = true;
 				continue;
 			}
@@ -213,7 +213,7 @@ void execute_collisions()
 			for (i = 0; i < Cmdline_num_threads; i++) {
 				if (pthread_mutex_trylock(&(conditions[i].mutex)) == 0) {
 					if (thread_collision_vars[i].processed == false) {
-						mprintf(("multithread: execution %d object pair %d - thread %d busy\n", executions, object_counter, i));
+						nprintf(("Multithread", "multithread: execution %d object pair %d - thread %d busy\n", executions, object_counter, i));
 						pthread_mutex_unlock(&(conditions[i].mutex));
 						continue;
 					}
@@ -302,7 +302,7 @@ void execute_collisions()
 		done = true;
 		for (it = collision_list.begin(); it != collision_list.end(); it++) {
 			if (it->processed == false) {
-				mprintf(("multithread: execution %d - looping back\n", executions));
+				nprintf(("Multithread", "multithread: execution %d - looping back\n", executions));
 				done = false;
 				loop_counter++;
 				break;
@@ -313,7 +313,7 @@ void execute_collisions()
 	{
 		threads_used_record = threads_used;
 	}
-	mprintf(("multithread: execution %d - %d collision pairs, %d threads used - record is %d threads used\n", executions, collision_list.size(), threads_used, threads_used_record));
+	nprintf(("Multithread", "multithread: execution %d - %d collision pairs, %d threads used - record is %d threads used\n", executions, collision_list.size(), threads_used, threads_used_record));
 
 	//make sure all the threads are done executing
 	for (i = 0; i < Cmdline_num_threads; i++) {
@@ -329,7 +329,7 @@ void *supercollider_thread(void *num)
 {
 	int thread_num = *(int *) num;
 
-	mprintf(("multithread: supercollider_thread %d started\n", thread_num));
+	nprintf(("Multithread", "multithread: supercollider_thread %d started\n", thread_num));
 
 	pthread_mutex_lock(&(conditions[thread_num].mutex));
 	while (threads_alive) {
@@ -353,4 +353,6 @@ void *supercollider_thread(void *num)
 	}
 	pthread_mutex_unlock(&(conditions[thread_num].mutex));
 	pthread_exit(NULL);
+
+	return 0;
 }
