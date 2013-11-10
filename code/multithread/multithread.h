@@ -2,7 +2,8 @@
 #define _MULTITHREAD_H
 
 #include "object/object.h"
-#include <pthread.h>
+//#include <pthread.h>
+#include "SDL.h"
 
 #define MULTITHREADING_ENABLED
 //#define MULTITHREADING_ENABLED2

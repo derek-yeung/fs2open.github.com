@@ -1522,7 +1522,6 @@ void obj_move_all(float frametime)
 	}
 	profile_end("Collision Detection");
 
-
 	turret_swarm_check_validity();
 
 	// do post-collision stuff for beam weapons

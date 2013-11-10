@@ -205,9 +205,6 @@
     <Filter Include="GameHelp\fs2netd">
       <UniqueIdentifier>{eaaf5609-a655-4b46-95b4-bee16c341561}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Multithread">
-      <UniqueIdentifier>{47c14302-ecc6-48d9-81e1-072938bd6866}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\code\ai\ai.cpp">
@@ -1059,9 +1056,6 @@
     <ClCompile Include="..\..\code\globalincs\profiling.cpp">
       <Filter>GlobalIncs</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\code\multithread\multithread.cpp">
-      <Filter>Multithread</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\code\ai\ai.h">
@@ -1861,9 +1855,6 @@
     </ClInclude>
     <ClInclude Include="..\..\code\PilotFile\pilotfile.h">
       <Filter>PilotFile</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\code\multithread\multithread.h">
-      <Filter>Multithread</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

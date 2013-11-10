@@ -21,7 +21,7 @@
 #include "model/model.h"
 
 class object;
-struct ship_subsys;
+class ship_subsys;
 
 #define	WP_UNUSED			-1
 #define	WP_LASER			0		// PLEASE NOTE that this flag specifies ballistic primaries as well - Goober5000
@@ -498,10 +498,6 @@ typedef struct weapon_info {
 	float alpha_max;			// maximum alpha value to use
 	float alpha_min;			// minimum alpha value to use
 	float alpha_cycle;			// cycle between max and min by this much each frame
-
-	//WMC - scripting stuff
-	script_hook sc_collide_ship;
-	script_hook sc_collide_weapon;
 
 	int weapon_hitpoints;
 

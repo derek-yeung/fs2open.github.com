@@ -318,9 +318,6 @@ float vm_vec_dot3(float x,float y,float z,vec3d *v)
 }
 #endif
 
-
-
-
 float vm_vec_dist_squared(vec3d *v0, vec3d *v1)
 {
 	float dx, dy, dz;
@@ -1400,21 +1397,31 @@ int vm_matrix_cmp( matrix * a, matrix * b )
 // Moves angle 'h' towards 'desired_angle', taking the shortest
 // route possible.   It will move a maximum of 'step_size' radians
 // each call.   All angles in radians.
-float vm_interp_angle( float *h, float desired_angle, float step_size )
+float vm_interp_angle( float *h, float desired_angle, float step_size, bool force_front )
 {
 	float delta;
+	float abs_delta;
 
 	if ( desired_angle < 0.0f ) desired_angle += PI2;
 	if ( desired_angle > PI2 ) desired_angle -= PI2;
 
 	delta = desired_angle - *h;
+	abs_delta = fl_abs(delta);
 
-	if ( fl_abs(delta) > PI )	{
+	if ((force_front) && ((desired_angle > PI) ^ (*h > PI)) ) {
+		// turn away from PI
+		if ( *h > PI )
+			delta = abs_delta;
+		else 
+			delta = -abs_delta;
+	} else {
+		if ( abs_delta > PI )	{
 		// Go the other way, since it will be shorter.
 		if ( delta > 0.0f )	{
 			delta = delta - PI2;
 		} else {
 			delta = PI2 - delta;
+			}
 		}
 	}
 

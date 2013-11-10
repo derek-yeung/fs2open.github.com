@@ -23,6 +23,7 @@
 #define OS_SUBSYS_ROTATION		(1<<8)
 
 struct vec3d;
+class ship_subsys;
 
 extern int Obj_snd_enabled;
 
@@ -41,7 +42,7 @@ int	obj_snd_assign(int objnum, int sndnum, vec3d *pos, int main, int flags=0, st
 void obj_snd_delete(int objnum, int index);
 
 // if sndnum is not -1, deletes all instances of the given sound within the object
-void	obj_snd_delete_type(int objnum, int sndnum = -1, struct ship_subsys *ss = NULL);
+void	obj_snd_delete_type(int objnum, int sndnum = -1, ship_subsys *ss = NULL);
 
 void	obj_snd_delete_all();
 void	obj_snd_stop_all();

@@ -66,7 +66,7 @@ static opengl_shader_file_t GL_post_shader_files[] = {
 	// NOTE: the main post-processing shader has any number of uniforms, but
 	//       these few should always be present
 	{ "post-v.sdr", "post-f.sdr", SDR_POST_FLAG_MAIN,
-		4, { "tex", "timer", "bloomed", "bloom_intensity" }, 0, { NULL } },
+		5, { "tex", "depth_tex", "timer", "bloomed", "bloom_intensity" }, 0, { NULL } },
 
 	{ "post-v.sdr", "blur-f.sdr", SDR_POST_FLAG_BLUR | SDR_POST_FLAG_PASS1,
 		2, { "tex", "bsize" }, 0, { NULL } },
@@ -338,8 +338,6 @@ void gr_opengl_post_process_end()
 	GLboolean light = GL_state.Lighting(GL_FALSE);
 	GLboolean blend = GL_state.Blend(GL_FALSE);
 	GLboolean cull = GL_state.CullFace(GL_FALSE);
-  const char *name;
-  float value ;
 
 	GL_state.Texture.SetShaderMode(GL_TRUE);
 
@@ -421,12 +419,13 @@ void gr_opengl_post_process_end()
 
 	// basic/default uniforms
 	vglUniform1iARB( opengl_shader_get_uniform("tex"), 0 );
+	vglUniform1iARB( opengl_shader_get_uniform("depth_tex"), 2);
 	vglUniform1fARB( opengl_shader_get_uniform("timer"), static_cast<float>(timer_get_milliseconds() % 100 + 1) );
 
 	for (size_t idx = 0; idx < Post_effects.size(); idx++) {
 		if ( GL_post_shader[Post_active_shader_index].flags2 & (1<<idx) ) {
-			name = Post_effects[idx].uniform_name.c_str();
-			value = Post_effects[idx].intensity;
+			const char *name = Post_effects[idx].uniform_name.c_str();
+			float value = Post_effects[idx].intensity;
 
 			vglUniform1fARB( (name == NULL) ? (-1) : opengl_shader_get_uniform(name), value);
 		}
@@ -456,10 +455,17 @@ void gr_opengl_post_process_end()
 	GL_state.Texture.SetTarget(GL_TEXTURE_2D);
 	GL_state.Texture.Enable(Scene_color_texture);
 
+	GL_state.Texture.SetActiveUnit(2);
+	GL_state.Texture.SetTarget(GL_TEXTURE_2D);
+	GL_state.Texture.Enable(Scene_depth_texture);
+
 	opengl_draw_textured_quad(-1.0f, -1.0f, 0.0f, 0.0f, 1.0f, 1.0f, Scene_texture_u_scale, Scene_texture_u_scale);
 	// Done!
 
-	GL_state.Texture.SetActiveUnit(1);	GL_state.Texture.Disable();
+	GL_state.Texture.SetActiveUnit(2);
+	GL_state.Texture.Disable();
+	GL_state.Texture.SetActiveUnit(1);	
+	GL_state.Texture.Disable();
 	GL_state.Texture.SetActiveUnit(0);
 	GL_state.Texture.Disable();
 

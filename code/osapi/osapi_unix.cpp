@@ -43,6 +43,8 @@ static int			Os_inited = 0;
 
 static CRITICAL_SECTION Os_lock;
 
+extern SDL_Window *GL_window;
+
 int Os_debugger_running = 0;
 
 // ----------------------------------------------------------------------------------------------------
@@ -98,7 +100,7 @@ void os_set_title( const char *title )
 {
 	strcpy_s( szWinTitle, title );
 
-	SDL_WM_SetCaption( szWinTitle, NULL );
+	SDL_SetWindowTitle( GL_window, szWinTitle);
 }
 
 extern void gr_opengl_shutdown();
@@ -155,7 +157,7 @@ void os_resume()
 // OSAPI FORWARD DECLARATIONS
 //
 
-extern int SDLtoFS2[SDLK_LAST];
+extern std::map<int, int> SDLtoFS2;
 extern void joy_set_button_state(int button, int state);
 extern void joy_set_hat_state(int position);
 
@@ -164,19 +166,33 @@ DWORD unix_process(DWORD lparam)
 	SDL_Event event;
 
 	while( SDL_PollEvent(&event) ) {
-		switch(event.type) {
-			case SDL_ACTIVEEVENT:
-				if( (event.active.state & SDL_APPACTIVE) || (event.active.state & SDL_APPINPUTFOCUS) ) {
-					if (fAppActive != event.active.gain) {
-						if (fAppActive)
-							game_pause();
-						else
-							game_unpause();
+		switch (event.type) {
+			case SDL_WINDOWEVENT: {
+				if (event.window.windowID == SDL_GetWindowID(GL_window)) {
+					switch (event.window.event) {
+						case SDL_WINDOWEVENT_MINIMIZED:
+						case SDL_WINDOWEVENT_FOCUS_LOST:
+						{
+							if (fAppActive) {
+								game_pause();
+								fAppActive = false;
+							}
+							break;
+						}
+						case SDL_WINDOWEVENT_MAXIMIZED:
+						case SDL_WINDOWEVENT_RESTORED:
+						case SDL_WINDOWEVENT_FOCUS_GAINED:
+						{
+							if (!fAppActive) {
+								game_unpause();
+								fAppActive = true;
+							}
+						}
 					}
-					fAppActive = event.active.gain;
-					gr_activate(fAppActive);
 				}
+				gr_activate(fAppActive);
 				break;
+			}
 
 			case SDL_KEYDOWN:
 				/*if( (event.key.keysym.mod & KMOD_ALT) && (event.key.keysym.sym == SDLK_RETURN) ) {
@@ -185,8 +201,8 @@ DWORD unix_process(DWORD lparam)
 					break;
 				}*/
 
-				if( SDLtoFS2[event.key.keysym.sym] ) {
-					key_mark( SDLtoFS2[event.key.keysym.sym], 1, 0 );
+				if( SDLtoFS2[event.key.keysym.scancode] ) {
+					key_mark( SDLtoFS2[event.key.keysym.scancode], 1, 0 );
 				}
 				break;
 
@@ -196,8 +212,8 @@ DWORD unix_process(DWORD lparam)
 					break;
 				}*/
 
-				if (SDLtoFS2[event.key.keysym.sym]) {
-					key_mark( SDLtoFS2[event.key.keysym.sym], 0, 0 );
+				if (SDLtoFS2[event.key.keysym.scancode]) {
+					key_mark( SDLtoFS2[event.key.keysym.scancode], 0, 0 );
 				}
 				break;
 

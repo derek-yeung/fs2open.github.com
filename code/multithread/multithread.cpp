@@ -234,6 +234,9 @@ void execute_collisions()
 				}
 			}
 
+			if (assigned_once == false) {
+				pthread_yield();
+			}
 //			mprintf(("multithread: execution %d object pair %d - middle\n", executions, object_counter));
 //			if (assigned_once == false) {
 //				mprintf(("multithread: execution %d object pair %d - NONE_FREE\n", executions, object_counter));
