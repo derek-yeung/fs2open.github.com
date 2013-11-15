@@ -1707,6 +1707,10 @@ void game_init()
 	// Initialize the timer before the os
 	timer_init();
 
+#ifndef NDEBUG
+	outwnd_init(1);
+#endif
+
 #ifdef MULTITHREADING_ENABLED
 	create_threads();
 #endif
@@ -6942,7 +6946,7 @@ int game_main(char *cmdline)
 
 
 	if (Is_standalone){
-		nprintf(("Network", "Standalone running"));
+		nprintf(("Network", "Standalone running\n"));
 	}
 
 	init_cdrom();

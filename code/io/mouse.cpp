@@ -531,8 +531,5 @@ void setWindowMousePos(POINT * pt)
 {
 	Assert(pt != NULL);
 
-	int x = (int) pt->x;
-	int y = (int) pt->y;
-
 	SDL_WarpMouseInWindow(GL_window, pt->x, pt->y);
 }

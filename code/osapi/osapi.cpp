@@ -137,10 +137,6 @@ void os_set_process_affinity()
 // for the app name, which is where registry keys are stored.
 void os_init(const char * wclass, const char * title, const char *app_name, const char *version_string )
 {
-#ifndef NDEBUG
-	outwnd_init(1);
-#endif
-
 	os_init_registry_stuff(Osreg_company_name, title, version_string);
 
 	strcpy_s( szWinTitle, title );
@@ -164,8 +160,6 @@ void os_init(const char * wclass, const char * title, const char *app_name, cons
 void os_set_title( const char * title )
 {
 	strcpy_s( szWinTitle, title );
-
-	SDL_WM_SetCaption(szWinTitle, NULL);
 }
 
 extern void gr_opengl_shutdown();
@@ -365,10 +359,9 @@ void change_window_active_state()
 			if ( !Is_standalone )
 				disableWindowsKey();
 
-            if (!Cmdline_window)
-            {
-                SetWindowPos(hwndApp, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-            }
+			if (!Cmdline_window) {
+				SetWindowPos(hwndApp, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+			}
 		} else {
 #ifdef SCP_OLDINPUT
 			joy_unacquire_ff();
@@ -387,10 +380,9 @@ void change_window_active_state()
 			if ( !Is_standalone )
 				enableWindowsKey();
 
-            if (!Cmdline_window)
-            {
-                SetWindowPos(hwndApp, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-            }
+			if (!Cmdline_window) {
+				SetWindowPos(hwndApp, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+			}
 		}
 
 		gr_activate(fAppActive);
@@ -528,7 +520,7 @@ LRESULT CALLBACK win32_message_handler(HWND hwnd,UINT msg,WPARAM wParam, LPARAM 
 				break;
 
 			key_lost_focus();
-            mouse_lost_focus();
+			mouse_lost_focus();
 			if ( !Is_standalone )
 				gr_activate(0);
 			break;
@@ -540,7 +532,7 @@ LRESULT CALLBACK win32_message_handler(HWND hwnd,UINT msg,WPARAM wParam, LPARAM 
 				break;
 
 			key_got_focus();
-            mouse_got_focus();
+			mouse_got_focus();
 			if ( !Is_standalone )
 				gr_activate(1);
 			break;
@@ -723,73 +715,86 @@ void win32_create_window(int width, int height)
 	return;// TRUE;
 }
 
-extern int SDLtoFS2[SDLK_LAST];
+extern std::map<int, int> SDLtoFS2;
 extern void joy_set_button_state(int button, int state);
 extern void joy_set_hat_state(int position);
+extern SDL_Window* GL_window;
 
 void os_poll()
 {
 	SDL_Event event;
 
-	while( SDL_PollEvent(&event) ) {
-		switch(event.type) {
-		case SDL_ACTIVEEVENT:
-			if( (event.active.state & SDL_APPACTIVE) || (event.active.state & SDL_APPINPUTFOCUS) ) {
-				if (fAppActive != event.active.gain) {
-					if (fAppActive)
-						game_pause();
-					else
-						game_unpause();
+	while (SDL_PollEvent(&event)) {
+		switch (event.type) {
+			case SDL_WINDOWEVENT: {
+				if (event.window.windowID == SDL_GetWindowID(GL_window)) {
+					switch (event.window.event) {
+						case SDL_WINDOWEVENT_MINIMIZED:
+						case SDL_WINDOWEVENT_FOCUS_LOST: {
+							if (fAppActive) {
+								game_pause();
+								fAppActive = false;
+							}
+							break;
+						}
+						case SDL_WINDOWEVENT_MAXIMIZED:
+						case SDL_WINDOWEVENT_RESTORED:
+						case SDL_WINDOWEVENT_FOCUS_GAINED: {
+							if (!fAppActive) {
+								game_unpause();
+								fAppActive = true;
+							}
+						}
+					}
 				}
-				fAppActive = event.active.gain;
 				gr_activate(fAppActive);
+				break;
 			}
-			break;
 
-		case SDL_KEYDOWN:
-			/*if( (event.key.keysym.mod & KMOD_ALT) && (event.key.keysym.sym == SDLK_RETURN) ) {
-			Gr_screen_mode_switch = 1;
-			gr_activate(1);
-			break;
-			}*/
+			case SDL_KEYDOWN:
+				/*if( (event.key.keysym.mod & KMOD_ALT) && (event.key.keysym.sym == SDLK_RETURN) ) {
+				 Gr_screen_mode_switch = 1;
+				 gr_activate(1);
+				 break;
+				 }*/
 
-			if (SDLtoFS2[event.key.keysym.sym]) {
-				key_mark(SDLtoFS2[event.key.keysym.sym], 1, 0);
-		}
-			break;
+				if (SDLtoFS2[event.key.keysym.scancode]) {
+					key_mark(SDLtoFS2[event.key.keysym.scancode], 1, 0);
+				}
+				break;
 
-		case SDL_KEYUP:
-			/*if( (event.key.keysym.mod & KMOD_ALT) && (event.key.keysym.sym == SDLK_RETURN) ) {
-			Gr_screen_mode_switch = 0;
-			break;
-			}*/
+			case SDL_KEYUP:
+				/*if( (event.key.keysym.mod & KMOD_ALT) && (event.key.keysym.sym == SDLK_RETURN) ) {
+				 Gr_screen_mode_switch = 0;
+				 break;
+				 }*/
 
-			if (SDLtoFS2[event.key.keysym.sym]) {
-				key_mark(SDLtoFS2[event.key.keysym.sym], 0, 0);
-		}		
-			break;
+				if (SDLtoFS2[event.key.keysym.scancode]) {
+					key_mark(SDLtoFS2[event.key.keysym.scancode], 0, 0);
+				}
+				break;
 
-		case SDL_MOUSEBUTTONDOWN:
-		case SDL_MOUSEBUTTONUP:
-			if (event.button.button == SDL_BUTTON_LEFT)
-				mouse_mark_button(MOUSE_LEFT_BUTTON, event.button.state);
-			else if (event.button.button == SDL_BUTTON_MIDDLE)
-				mouse_mark_button(MOUSE_MIDDLE_BUTTON, event.button.state);
-			else if (event.button.button == SDL_BUTTON_RIGHT)
-				mouse_mark_button(MOUSE_RIGHT_BUTTON, event.button.state);
+			case SDL_MOUSEBUTTONDOWN:
+			case SDL_MOUSEBUTTONUP:
+				if (event.button.button == SDL_BUTTON_LEFT)
+					mouse_mark_button(MOUSE_LEFT_BUTTON, event.button.state);
+				else if (event.button.button == SDL_BUTTON_MIDDLE)
+					mouse_mark_button(MOUSE_MIDDLE_BUTTON, event.button.state);
+				else if (event.button.button == SDL_BUTTON_RIGHT)
+					mouse_mark_button(MOUSE_RIGHT_BUTTON, event.button.state);
 
-			break;
+				break;
 
-		case SDL_JOYHATMOTION:
-			joy_set_hat_state(event.jhat.value);
-			break;
+			case SDL_JOYHATMOTION:
+				joy_set_hat_state(event.jhat.value);
+				break;
 
-		case SDL_JOYBUTTONDOWN:
-		case SDL_JOYBUTTONUP:
-			if (event.jbutton.button < JOY_NUM_BUTTONS) {
-				joy_set_button_state(event.jbutton.button, event.jbutton.state);
-	}
-			break;
+			case SDL_JOYBUTTONDOWN:
+			case SDL_JOYBUTTONUP:
+				if (event.jbutton.button < JOY_NUM_BUTTONS) {
+					joy_set_button_state(event.jbutton.button, event.jbutton.state);
+				}
+				break;
 		}
 	}
 }

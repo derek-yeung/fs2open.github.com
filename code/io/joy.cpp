@@ -77,7 +77,7 @@ void joy_get_caps (int max)
 		joy = SDL_JoystickOpen (j);
 		if (joy)
 		{
-			nprintf (("JOYSTICK", "Joystick #%d: %s\n", j - JOYSTICKID1 + 1, SDL_JoystickName(j)));
+			nprintf (("JOYSTICK", "Joystick #%d: %s\n", j - JOYSTICKID1 + 1, SDL_JoystickName(joy)));
 			if (j == Cur_joystick) {
 				for (int i = 0; i < SDL_JoystickNumAxes(joy); i++)
 				{
@@ -510,7 +510,7 @@ int joy_init()
 	joy_num_hats = SDL_JoystickNumHats(sdljoy);
 
 	mprintf(( "\nJoystick INITTED!\n\n" ));
-	mprintf(( "Using '%s' as the primary joystick:\n", SDL_JoystickName(Cur_joystick) ));
+	mprintf(( "Using '%s' as the primary joystick:\n", SDL_JoystickName(sdljoy) ));
 	mprintf(( "  Number of axes: %i\n", joy_num_axes ));
 	mprintf(( "  Number of buttons: %i\n", joy_num_buttons ));
 	mprintf(( "  Number of hats: %i\n", joy_num_hats ));
