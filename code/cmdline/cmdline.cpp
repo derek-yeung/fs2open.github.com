@@ -168,9 +168,6 @@ Flag exe_params[] =
 	{ "-no_3d_sound",		"Use only 2D/stereo for sound effects",		true,	0,					EASY_DEFAULT,		"Troubleshoot",	"http://www.hard-light.net/wiki/index.php/Command-Line_Reference#-no_3d_sound", },
 	{ "-disable_glsl_model","Don't use shaders for model rendering",	true,	0,					EASY_DEFAULT,		"Troubleshoot",	"http://www.hard-light.net/wiki/index.php/Command-Line_Reference#-disable_glsl_model", },
 	{ "-mipmap",			"Enable mipmapping",						true,	0,					EASY_DEFAULT_MEM,	"Troubleshoot",	"http://www.hard-light.net/wiki/index.php/Command-Line_Reference#-mipmap", },
- #ifndef SCP_UNIX
-	{ "-disable_di_mouse",	"Don't use DirectInput for mouse control",	true,	0,					EASY_DEFAULT,		"Troubleshoot",	"", },
- #endif
 	{ "-use_gldrawelements","Don't use glDrawRangeElements",			true,	0,					EASY_DEFAULT,		"Troubleshoot",	"", },
 	{ "-old_collision",		"Use old collision detection system",		true,	0,					EASY_DEFAULT,		"Troubleshoot",	"", },
 
@@ -181,9 +178,7 @@ Flag exe_params[] =
 	{ "-fps",				"Show frames per second on HUD",			false,	0,					EASY_DEFAULT,		"Dev Tool",		"http://www.hard-light.net/wiki/index.php/Command-Line_Reference#-fps", },
 	{ "-pos",				"Show position of camera",					false,	0,					EASY_DEFAULT,		"Dev Tool",		"http://www.hard-light.net/wiki/index.php/Command-Line_Reference#-pos", },
 	{ "-window",			"Run in window",							true,	0,					EASY_DEFAULT,		"Dev Tool",		"http://www.hard-light.net/wiki/index.php/Command-Line_Reference#-window", },
- #ifndef SCP_UNIX
 	{ "-fullscreen_window",	"Run in fullscreen window",					false,	0,					EASY_DEFAULT,		"Dev Tool",		"http://www.hard-light.net/wiki/index.php/Command-Line_Reference#-fullscreen_window", },
- #endif
 	{ "-stats",				"Show statistics",							true,	0,					EASY_DEFAULT,		"Dev Tool",		"http://www.hard-light.net/wiki/index.php/Command-Line_Reference#-stats", },
 	{ "-coords",			"Show coordinates",							false,	0,					EASY_DEFAULT,		"Dev Tool",		"http://www.hard-light.net/wiki/index.php/Command-Line_Reference#-coords", },
 	{ "-show_mem_usage",	"Show memory usage",						true,	0,					EASY_DEFAULT,		"Dev Tool",		"http://www.hard-light.net/wiki/index.php/Command-Line_Reference#-show_mem_usage", },
@@ -380,7 +375,6 @@ cmdline_parm mipmap_arg("-mipmap", NULL);			// Cmdline_mipmap
 cmdline_parm atiswap_arg("-ati_swap", NULL);        // Cmdline_atiswap - Fix ATI color swap issue for screenshots.
 cmdline_parm no3dsound_arg("-no_3d_sound", NULL);		// Cmdline_no_3d_sound - Disable use of full 3D sounds
 cmdline_parm no_glsl_models_arg("-disable_glsl_model", NULL); // Cmdline_no_glsl_model_rendering -- switches model rendering to fixed pipeline
-cmdline_parm no_di_mouse_arg("-disable_di_mouse", NULL); // Cmdline_no_di_mouse -- Disables directinput use for mouse control
 cmdline_parm no_drawrangeelements("-use_gldrawelements", NULL); // Cmdline_drawelements -- Uses glDrawElements instead of glDrawRangeElements
 cmdline_parm keyboard_layout("-keyboard_layout", NULL);
 
@@ -395,7 +389,6 @@ int Cmdline_noglsl = 0;
 int Cmdline_ati_color_swap = 0;
 int Cmdline_no_3d_sound = 0;
 int Cmdline_no_glsl_model_rendering = 0;
-int Cmdline_no_di_mouse = 0;
 int Cmdline_drawelements = 0;
 char* Cmdline_keyboard_layout = NULL;
 
@@ -1176,10 +1169,8 @@ bool SetCmdlineParams()
 
 	if ( fullscreen_window_arg.found( ) )
 	{
-#ifdef WIN32
 		Cmdline_fullscreen_window = 1;
 		Cmdline_window = 0; /* Make sure no-one sets both */
-#endif
 	}
 
 	if(res_arg.found()){
@@ -1364,10 +1355,6 @@ bool SetCmdlineParams()
 		}
 
 		Fxaa_preset_last_frame = Cmdline_fxaa_preset;
-	}
-
-	if (no_di_mouse_arg.found() ) {
-		Cmdline_no_di_mouse = 1;
 	}
 
 	if ( img2dds_arg.found() )

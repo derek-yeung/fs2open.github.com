@@ -64,12 +64,6 @@ bool GL_initted = 0;
 //3==NV Radial
 int OGL_fogmode = 0;
 
-#ifdef _WIN32
-static HDC GL_device_context = NULL;
-static HGLRC GL_render_context = NULL;
-static PIXELFORMATDESCRIPTOR GL_pfd;
-#endif
-
 static ushort *GL_original_gamma_ramp = NULL;
 
 int Use_VBOs = 0;
@@ -115,6 +109,7 @@ static GLenum GL_read_format = GL_BGRA;
 
 SDL_Window *GL_window = NULL;
 SDL_Renderer *GL_renderer = NULL;
+SDL_GLContext GL_context = NULL;
 
 void opengl_go_fullscreen()
 {
@@ -156,7 +151,7 @@ void opengl_go_windowed()
 		os_suspend();
 		if(GL_window)
 		{
-			SDL_SetWindowFullscreen(GL_window, 0);
+			SDL_SetWindowFullscreen(GL_window, Cmdline_fullscreen_window ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0 );
 		}
 		else
 		{
@@ -503,30 +498,10 @@ void gr_opengl_cleanup(int minimize)
 
 	opengl_tcache_flush();
 
-#ifdef _WIN32
-	HWND wnd = (HWND)os_get_window();
-
-	if (GL_render_context) {
-		if ( !wglMakeCurrent(NULL, NULL) ) {
-			MessageBox(wnd, "SHUTDOWN ERROR", "error", MB_OK);
-		}
-
-		if ( !wglDeleteContext(GL_render_context) ) {
-			MessageBox(wnd, "Unable to delete rendering context", "error", MB_OK);
-		}
-
-		GL_render_context = NULL;
-	}
-#endif
-
 	opengl_minimize();
 
 	if (minimize) {
-#ifdef _WIN32
-		if ( !Cmdline_fullscreen_window && !Cmdline_window ) {
-			ChangeDisplaySettings(NULL, 0);
-		}
-#endif
+
 	}
 }
 
@@ -1333,16 +1308,7 @@ void gr_opengl_shutdown()
 		GL_original_gamma_ramp = NULL;
 	}
 
-#ifdef _WIN32
-	wglMakeCurrent(NULL, NULL);
-
-	if (GL_render_context) {
-		wglDeleteContext(GL_render_context);
-		GL_render_context = NULL;
-	}
-
-	GL_device_context = NULL;
-#endif
+	SDL_GL_DeleteContext(GL_context);
 }
 
 // NOTE: This should only ever be called through atexit()!!!
@@ -1499,7 +1465,11 @@ int opengl_init_display_device()
 
 	mprintf(("  Requested SDL Video values = R: %d, G: %d, B: %d, depth: %d, stencil: %d, double-buffer: %d, FSAA: %d\n", Gr_red.bits, Gr_green.bits, Gr_blue.bits, (bpp == 32) ? 24 : 16, (bpp == 32) ? 8 : 1, db, fsaa_samples));
 
-	if ((GL_window = SDL_CreateWindow(Osreg_title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, gr_screen.max_w, gr_screen.max_h, SDL_WINDOW_OPENGL)) == NULL)
+	int windowflags = SDL_WINDOW_OPENGL;
+	if (Cmdline_fullscreen_window)
+		windowflags |= SDL_WINDOW_BORDERLESS;
+
+	if ((GL_window = SDL_CreateWindow(Osreg_title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, gr_screen.max_w, gr_screen.max_h, windowflags)) == NULL)
 	{
 		fprintf(stderr, "Couldn't set video mode: %s", SDL_GetError());
 		return 1;
@@ -1508,6 +1478,11 @@ int opengl_init_display_device()
 		fprintf(stderr, "Couldn't set up renderer: %s", SDL_GetError());
 		return 1;
 	}
+
+	const char* sdlerror = SDL_GetError();
+
+	GL_context = SDL_GL_CreateContext(GL_window);
+	SDL_GL_MakeCurrent(GL_window, GL_context);
 	//TODO: set up bpp settings
 
 	SDL_GL_GetAttribute(SDL_GL_RED_SIZE, &r);

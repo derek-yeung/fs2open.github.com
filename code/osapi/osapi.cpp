@@ -346,9 +346,6 @@ void change_window_active_state()
 	if (fAppActive != fOldAppActive) {
 		if (fAppActive) {
 			// maximize it
-#ifdef SCP_OLDINPUT
-			joy_reacquire_ff();
-#endif
 
 			game_unpause();
 
@@ -363,9 +360,6 @@ void change_window_active_state()
 				SetWindowPos(hwndApp, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 			}
 		} else {
-#ifdef SCP_OLDINPUT
-			joy_unacquire_ff();
-#endif
 
 			if (Mouse_hidden)
 				Mouse_hidden = 0;
@@ -752,23 +746,12 @@ void os_poll()
 			}
 
 			case SDL_KEYDOWN:
-				/*if( (event.key.keysym.mod & KMOD_ALT) && (event.key.keysym.sym == SDLK_RETURN) ) {
-				 Gr_screen_mode_switch = 1;
-				 gr_activate(1);
-				 break;
-				 }*/
-
 				if (SDLtoFS2[event.key.keysym.scancode]) {
 					key_mark(SDLtoFS2[event.key.keysym.scancode], 1, 0);
 				}
 				break;
 
 			case SDL_KEYUP:
-				/*if( (event.key.keysym.mod & KMOD_ALT) && (event.key.keysym.sym == SDLK_RETURN) ) {
-				 Gr_screen_mode_switch = 0;
-				 break;
-				 }*/
-
 				if (SDLtoFS2[event.key.keysym.scancode]) {
 					key_mark(SDLtoFS2[event.key.keysym.scancode], 0, 0);
 				}
