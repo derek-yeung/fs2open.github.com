@@ -2,7 +2,6 @@
 #define _MULTITHREAD_H
 
 #include "object/object.h"
-//#include <pthread.h>
 #include "SDL.h"
 
 #define MULTITHREADING_ENABLED
@@ -16,12 +15,12 @@
 #define THREAD_EXIT											-2
 
 #ifdef MULTITHREADING_ENABLED
-#define OPENGL_LOCK											{pthread_mutex_lock(&render_mutex);}
-#define OPENGL_UNLOCK										{pthread_mutex_unlock(&render_mutex);}
-#define G3_COUNT_LOCK										{pthread_mutex_lock(&g3_count_mutex);}
-#define G3_COUNT_UNLOCK										{pthread_mutex_unlock(&g3_count_mutex);}
-#define HOOK_LOCK											{pthread_mutex_lock(&hook_mutex);}
-#define HOOK_UNLOCK											{pthread_mutex_unlock(&hook_mutex);}
+#define OPENGL_LOCK											{SDL_LockMutex(render_mutex);}
+#define OPENGL_UNLOCK										{SDL_UnlockMutex(render_mutex);}
+#define G3_COUNT_LOCK										{SDL_LockMutex(g3_count_mutex);}
+#define G3_COUNT_UNLOCK										{SDL_UnlockMutex(g3_count_mutex);}
+#define HOOK_LOCK											{SDL_LockMutex(hook_mutex);}
+#define HOOK_UNLOCK											{SDL_UnlockMutex(hook_mutex);}
 #else
 #define OPENGL_LOCK
 #define OPENGL_UNLOCK
@@ -32,9 +31,9 @@
 #endif
 
 typedef struct {
-	pthread_t handle;
-	pthread_mutex_t mutex;
-	pthread_cond_t condition;
+	SDL_Thread *thread;
+	SDL_mutex *mutex;
+	SDL_cond *condition;
 } thread_condition;
 
 typedef struct {
@@ -59,9 +58,9 @@ typedef enum {
 	COLLISION_PAIR_FLAG_INVALID
 } collision_pair_flag;
 
-extern pthread_mutex_t render_mutex;
-extern pthread_mutex_t g3_count_mutex;
-extern pthread_mutex_t hook_mutex;
+extern SDL_mutex *render_mutex;
+extern SDL_mutex *g3_count_mutex;
+extern SDL_mutex *hook_mutex;
 extern bool threads_alive;
 
 void create_threads();
