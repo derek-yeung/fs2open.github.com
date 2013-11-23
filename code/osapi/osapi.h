@@ -65,14 +65,9 @@ void os_toggle_fullscreen();
 int os_foreground();
 
 // Returns the handle to the main window
-#ifdef _WIN32
-uint os_get_window(); 
-#else
-#define os_get_window() NULL
-#endif // _WIN32
+SDL_Window* os_get_window();
 
-void os_set_window(uint new_handle);	 
-
+void os_set_window(SDL_Window* new_handle);	 
 
 // process management --------------------------------------------------------------
 
@@ -86,7 +81,15 @@ void os_sleep(int ms);
 void os_suspend();
 
 // resume message processing
-void os_resume();
+void os_resume(); 
+
+// These map onto the SDL ShowSimpleMessageBox flags
+#define MESSAGEBOX_ERROR 1
+#define MESSAGEBOX_WARNING 2
+#define MESSAGEBOX_INFORMATION 3
+
+// Display a simple messagebox through SDL
+void SCP_Messagebox(int type, const char* message);
 
 #endif // _OSAPI_H
 

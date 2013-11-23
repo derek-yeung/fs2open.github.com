@@ -3811,7 +3811,7 @@ int model_rotate_gun(int model_num, model_subsystem *turret, matrix *orient, ang
 	// Call this the desired_angles
 	angles desired_angles;
 //	vm_extract_angles_vector(&desired_angles, &of_dst);
-
+	
 	if (reset == false) {
 		desired_angles.p = (float)acos(of_dst.xyz.z);
 		desired_angles.h = PI - atan2_safe(of_dst.xyz.x, of_dst.xyz.y);
@@ -3823,11 +3823,11 @@ int model_rotate_gun(int model_num, model_subsystem *turret, matrix *orient, ang
 		if (turret->n_triggers > 0) {
 			int i;
 			for (i = 0; i<turret->n_triggers; i++) {
-					desired_angles.p = turret->triggers[i].angle.xyz.x;
-					desired_angles.h = turret->triggers[i].angle.xyz.y;
-				}
+				desired_angles.p = turret->triggers[i].angle.xyz.x;
+				desired_angles.h = turret->triggers[i].angle.xyz.y;
 			}
 		}
+	}
 
 	if (turret->flags & MSS_FLAG_TURRET_ALT_MATH)
 		limited_base_rotation = true;

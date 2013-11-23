@@ -12,19 +12,19 @@
 
 #include <wx/wx.h>
 
-class frmWaypointEditor : public fredBase::frmWaypointEditor
+class frmWaypointEditor: public fredBase::frmWaypointEditor
 {
 public:
-	frmWaypointEditor( wxWindow* parent, wxWindowID id );
+	frmWaypointEditor(wxWindow* parent, wxWindowID id);
 
 protected:
-	frmWaypointEditor( void );
-	frmWaypointEditor( const frmWaypointEditor& T );
+	frmWaypointEditor(void);
+	frmWaypointEditor(const frmWaypointEditor& T);
 
 	// Handlers for frmWaypointEditor
-	void OnClose( wxCloseEvent& event );
+	void OnClose(wxCloseEvent& event);
 
 private:
 
 };
- #endif // _frmWaypointEditor_H
+#endif // _frmWaypointEditor_H

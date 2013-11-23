@@ -55,8 +55,6 @@ bool threads_alive = false;
 unsigned int executions = 0;
 int threads_used_record = 0;
 
-timespec wait_time = { 2, 0 };
-
 int supercollider_thread(void *obj_collision_vars_ptr);
 
 void create_threads()
@@ -70,9 +68,6 @@ void create_threads()
 	setup_pair.object_2 = NULL;
 	setup_pair.processed = true;
 	setup_pair.operation_func = NULL;
-
-//	SDL_SetMainReady();
-//	SDL_Init(0);
 
 	collision_master_mutex = SDL_CreateMutex();
 	if (collision_master_mutex == NULL) {
@@ -166,7 +161,6 @@ void execute_collisions()
 	unsigned int object_counter = 0;
 	unsigned int loop_counter = 0;
 	SCP_vector<collision_pair>::iterator it;
-	bool assigned_any, assigned_once = false;
 	bool done = false;
 	bool skip = false;
 	int threads_used = 1;
@@ -187,13 +181,11 @@ void execute_collisions()
 			nprintf(("Multithread", "multithread: execution %d - STUCK\n", executions));
 			Error(LOCATION, "Encountered fatal error in multithreading\n");
 		}
-		assigned_any = false;
 		object_counter = 0;
 		for (it = collision_list.begin(); it != collision_list.end(); it++, object_counter++) {
 			if (it->processed == true) {
 				continue;
 			}
-			assigned_once = false;
 			skip = false;
 
 			//ensure the objects being checked aren't already being used
@@ -228,7 +220,6 @@ void execute_collisions()
 					if (SDL_UnlockMutex(conditions[i].mutex) < 0) {
 						Error(LOCATION, "supercollider mutex unlock failed: %s\n", SDL_GetError());
 					}
-					assigned_once = true;
 					if ((i + 1) > threads_used) {
 						threads_used = (i + 1);
 					}

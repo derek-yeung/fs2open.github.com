@@ -13,8 +13,8 @@
 
 #ifdef HAVE_INTTYPES_H
 /* inttypes.h includes stdint.h in a standard environment, so there's
-no need to include stdint.h separately. If inttypes.h doesn't define
-int32_t, it's defined in config.h. */
+ no need to include stdint.h separately. If inttypes.h doesn't define
+ int32_t, it's defined in config.h. */
 #include <inttypes.h>
 #endif /* HAVE_INTTYPES_H */
 

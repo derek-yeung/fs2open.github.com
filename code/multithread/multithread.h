@@ -30,32 +30,33 @@
 #define HOOK_UNLOCK
 #endif
 
-typedef struct {
+typedef struct
+{
 	SDL_Thread *thread;
 	SDL_mutex *mutex;
 	SDL_cond *condition;
 } thread_condition;
 
-typedef struct {
+typedef struct
+{
 	object *object_1;
 	object *object_2;
 //    unsigned char flags;
 	bool processed;
-	void *operation_func;
+	int (*operation_func)(object, object);
 } collision_pair;
 
-typedef enum {
+typedef enum
+{
 //  THREAD_TYPE_OBJECT_MOVE,
 //  THREAD_TYPE_DOCKING,
 	THREAD_TYPE_COLLISION,
 	THREAD_TYPE_INVALID
 } thread_type;
 
-typedef enum {
-	COLLISION_PAIR_FLAG_COLLIDED,
-	COLLISION_PAIR_FLAG_RESULT,
-	COLLISION_PAIR_FLAG_EXECUTED,
-	COLLISION_PAIR_FLAG_INVALID
+typedef enum
+{
+	COLLISION_PAIR_FLAG_COLLIDED, COLLISION_PAIR_FLAG_RESULT, COLLISION_PAIR_FLAG_EXECUTED, COLLISION_PAIR_FLAG_INVALID
 } collision_pair_flag;
 
 extern SDL_mutex *render_mutex;

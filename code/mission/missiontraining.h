@@ -5,7 +5,7 @@
  * or otherwise commercially exploit the source or things you created based on the 
  * source.
  *
-*/ 
+ */
 
 #ifndef __MISSIONTRAINING_H__
 #define __MISSIONTRAINING_H__

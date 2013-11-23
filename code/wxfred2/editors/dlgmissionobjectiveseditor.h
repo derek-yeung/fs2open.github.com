@@ -12,20 +12,20 @@
 
 #include <wx/wx.h>
 
-class dlgMissionObjectivesEditor : public fredBase::dlgMissionObjectivesEditor
+class dlgMissionObjectivesEditor: public fredBase::dlgMissionObjectivesEditor
 {
 public:
-	dlgMissionObjectivesEditor( wxWindow* parent, wxWindowID id );
+	dlgMissionObjectivesEditor(wxWindow* parent, wxWindowID id);
 
 protected:
-	dlgMissionObjectivesEditor( void );
-	dlgMissionObjectivesEditor( const dlgMissionObjectivesEditor& T );
+	dlgMissionObjectivesEditor(void);
+	dlgMissionObjectivesEditor(const dlgMissionObjectivesEditor& T);
 
 	// Handlers for dlgMissionObjectives
-	void OnClose( wxCloseEvent& event );
-	void OnNewObjective( wxCommandEvent& event );
-	void OnOK(wxCommandEvent& event );
-	void OnCancel( wxCommandEvent& event );
+	void OnClose(wxCloseEvent& event);
+	void OnNewObjective(wxCommandEvent& event);
+	void OnOK(wxCommandEvent& event);
+	void OnCancel(wxCommandEvent& event);
 
 private:
 };

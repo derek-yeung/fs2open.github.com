@@ -18,34 +18,34 @@ static json_free_t do_free = free;
 
 void *jsonp_malloc(size_t size)
 {
-    if(!size)
-        return NULL;
+	if (!size)
+		return NULL;
 
-    return (*do_malloc)(size);
+	return (*do_malloc)(size);
 }
 
 void jsonp_free(void *ptr)
 {
-    if(!ptr)
-        return;
+	if (!ptr)
+		return;
 
-    (*do_free)(ptr);
+	(*do_free)(ptr);
 }
 
 char *jsonp_strdup(const char *str)
 {
-    char *new_str;
+	char *new_str;
 
-    new_str = jsonp_malloc(strlen(str) + 1);
-    if(!new_str)
-        return NULL;
+	new_str = jsonp_malloc(strlen(str) + 1);
+	if (!new_str)
+		return NULL;
 
-    strcpy(new_str, str);
-    return new_str;
+	strcpy(new_str, str);
+	return new_str;
 }
 
 void json_set_alloc_funcs(json_malloc_t malloc_fn, json_free_t free_fn)
 {
-    do_malloc = malloc_fn;
-    do_free = free_fn;
+	do_malloc = malloc_fn;
+	do_free = free_fn;
 }

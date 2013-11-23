@@ -5,7 +5,7 @@
  * or otherwise commercially exploit the source or things you created based on the 
  * source.
  *
-*/
+ */
 
 #ifndef _AIINTERNAL_H
 #define _AIINTERNAL_H
