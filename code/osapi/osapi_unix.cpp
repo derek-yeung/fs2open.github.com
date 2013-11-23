@@ -35,6 +35,8 @@
 // OSAPI DEFINES/VARS
 //
 
+static SDL_Window* main_window = NULL;
+
 // os-wide globals
 static int			fAppActive = 1;
 static char			szWinTitle[128];
@@ -123,12 +125,29 @@ int os_foreground()
 }
 
 // Returns the handle to the main window
-/*uint os_get_window()
+SDL_Window* os_get_window()
 {
-	// not used
-	return 0;
-}*/
+	return main_window;
+}
 
+// Returns the handle to the main window
+void os_set_window(SDL_Window* new_handle)
+{
+	main_window = new_handle;
+}
+
+// For FRED
+void os_set_window_from_hwnd(HWND handle)
+{
+	SDL_InitSubSystem(SDL_INIT_VIDEO);
+
+	if (SDL_GL_LoadLibrary(NULL) < 0)
+		Error(LOCATION, "Failed to load OpenGL library: %s!", SDL_GetError());
+
+	SDL_Window* window = SDL_CreateWindowFrom((void*) handle);
+
+	os_set_window(window);
+}
 
 // process management -----------------------------------------------------------------
 

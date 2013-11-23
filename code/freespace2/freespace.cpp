@@ -1691,6 +1691,8 @@ void game_init()
 
 	Game_current_mission_filename[0] = 0;
 
+	// Moved from rand32, if we're gonna break, break immediately.
+	Assert(RAND_MAX == 0x7fff || RAND_MAX >= 0x7ffffffd);
 	// seed the random number generator
 	Game_init_seed = (int) time(NULL);
 	srand( Game_init_seed );
@@ -1718,6 +1720,9 @@ void game_init()
 	// init os stuff next
 	if ( !Is_standalone ) {		
 		os_init( Osreg_class_name, Osreg_app_name );
+	}
+	else {
+		std_init_os();
 	}
 
 #ifndef NDEBUG
