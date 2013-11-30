@@ -43,23 +43,6 @@ obj_pair pair_free_list;
 
 SCP_vector<int> Collision_sort_list;
 
-class collider_pair
-{
-public:
-	object *a;
-	object *b;
-	int signature_a;
-	int signature_b;
-	int next_check_time;
-	bool initialized;
-
-	// we need to define a constructor because the hash map can
-	// implicitly insert an object when we use the [] operator
-	collider_pair()
-		: a(NULL), b(NULL), initialized(false)
-	{}
-};
-
 SCP_hash_map<uint, collider_pair> Collision_cached_pairs;
 
 struct checkobject;
@@ -130,36 +113,6 @@ void obj_reset_pairs()
 	Obj_pairs[MIN_PAIRS-1].next = NULL;
 
 	pair_free_list.next = &Obj_pairs[0];
-}
-
-// returns true if we should reject object pair if one is child of other.
-int reject_obj_pair_on_parent(object *A, object *B)
-{
-	if (A->type == OBJ_SHIP) {
-		if (B->type == OBJ_DEBRIS) {
-			if (B->parent_sig == A->signature) {
-				return 0;
-			}
-		}
-	}
-
-	if (B->type == OBJ_SHIP) {
-		if (A->type == OBJ_DEBRIS) {
-			if (A->parent_sig == B->signature) {
-				return 0;
-			}
-		}
-	}
-
-	if (A->parent_sig == B->signature) {
-		return 1;
-	}
-
-	if (B->parent_sig == A->signature) {
-		return 1;
-	}
-
-	return 0;
 }
 
 int reject_due_collision_groups(object *A, object *B)
@@ -1263,9 +1216,9 @@ void obj_find_overlap_colliders(SCP_vector<int> *overlap_list_out, SCP_vector<in
 				
 				if ( collide ) {
 #ifdef MULTITHREADING_ENABLED
-				  collision_pair_add(&Objects[(*list)[i]], &Objects[overlappers[j]]);
+					collision_pair_add(&Objects[(*list)[i]], &Objects[overlappers[j]]);
 #else
-          obj_collide_pair(&Objects[(*list)[i]], &Objects[overlappers[j]]);
+					obj_collide_pair(&Objects[(*list)[i]], &Objects[overlappers[j]]);
 #endif
 				}
 			} else {

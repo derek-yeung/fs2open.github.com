@@ -2,6 +2,7 @@
 #define _MULTITHREAD_H
 
 #include "object/object.h"
+#include "object/objcollide.h"
 #include "SDL.h"
 
 #define MULTITHREADING_ENABLED
@@ -39,11 +40,10 @@ typedef struct
 
 typedef struct
 {
-	object *object_1;
-	object *object_2;
-//    unsigned char flags;
+	obj_pair pair;
 	bool processed;
-	int (*operation_func)(object, object);
+	int (*operation_func)(obj_pair);
+	unsigned char func_result;
 } collision_pair;
 
 typedef enum

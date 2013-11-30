@@ -71,6 +71,24 @@ extern int collision_type;
 
 #define SUBMODEL_NO_ROT_HIT	0
 #define SUBMODEL_ROT_HIT		1
+
+class collider_pair
+{
+public:
+	object *a;
+	object *b;
+	int signature_a;
+	int signature_b;
+	int next_check_time;
+	bool initialized;
+
+	// we need to define a constructor because the hash map can
+	// implicitly insert an object when we use the [] operator
+	collider_pair()
+		: a(NULL), b(NULL), initialized(false)
+	{}
+};
+
 void set_hit_struct_info(collision_info_struct *hit, mc_info *mc, int submodel_rot_hit);
 
 void obj_pairs_close();
@@ -206,4 +224,21 @@ inline float obj_get_collider_endpoint(int obj_num, int axis, bool min)
   }
 }
 
+// returns true if we should reject object pair if one is child of other.
+inline bool reject_obj_pair_on_parent(object *A, object *B)
+{
+	if((A->type == OBJ_SHIP) && (B->type == OBJ_DEBRIS) && (B->parent_sig == A->signature)) {
+		return false;
+	}
+
+	if((B->type == OBJ_SHIP) && (A->type == OBJ_DEBRIS) && (A->parent_sig == B->signature)) {
+		return false;
+	}
+
+	if ((A->parent_sig == B->signature) || (B->parent_sig == A->signature)) {
+		return true;
+	}
+
+	return false;
+}
 #endif

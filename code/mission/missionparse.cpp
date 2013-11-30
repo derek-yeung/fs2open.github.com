@@ -72,6 +72,7 @@
 #include "popup/popupdead.h"
 #include "sound/sound.h"
 #include "sound/ds.h"
+#include "osapi/osapi.h"
 
 LOCAL struct {
 	char docker[NAME_LENGTH];
@@ -7832,7 +7833,7 @@ void restore_default_weapons(char *ships_tbl)
 	// guesstimate that this actually is a ships.tbl
 	if (!strstr(ships_tbl, "#Ship Classes"))
 	{
-		MessageBox(NULL, "This is not a ships.tbl file.  Aborting conversion...", "Error", MB_OK);
+		SCP_Messagebox(MESSAGEBOX_ERROR, "This is not a ships.tbl file.  Aborting conversion...");
 		return;
 	}
 

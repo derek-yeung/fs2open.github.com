@@ -233,7 +233,7 @@ void gr_opengl_flip()
 
 	gr_reset_clip();
 
-	mouse_eval_deltas();
+	mouse_reset_deltas();
 	
 	GL_mouse_saved = 0;
 	
@@ -1312,7 +1312,11 @@ void gr_opengl_shutdown()
 		GL_original_gamma_ramp = NULL;
 	}
 
+	SDL_DestroyRenderer(GL_renderer);
+	GL_renderer = NULL;
+
 	SDL_GL_DeleteContext(GL_context);
+	GL_context = NULL;
 }
 
 // NOTE: This should only ever be called through atexit()!!!
@@ -1427,7 +1431,8 @@ int opengl_init_display_device()
 		if (GL_original_gamma_ramp == NULL) {
 			mprintf(("  Unable to allocate memory for gamma ramp!  Disabling...\n"));
 			Cmdline_no_set_gamma = 1;
-		} else {
+		}
+		else {
 			// assume identity ramp by default, to be overwritten by true ramp later
 			for (ushort x = 0; x < 256; x++) {
 				GL_original_gamma_ramp[x] = GL_original_gamma_ramp[x + 256] = GL_original_gamma_ramp[x + 512] = (x << 8) | x;
@@ -1438,10 +1443,10 @@ int opengl_init_display_device()
 	int flags = SDL_RENDERER_ACCELERATED;
 	int r = 0, g = 0, b = 0, depth = 0, stencil = 1, db = 1;
 
-	mprintf(("  Initializing SDL...\n"));
+	mprintf(("  Initializing SDL video...\n"));
 
 	if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0) {
-		fprintf (stderr, "Couldn't init SDL: %s", SDL_GetError());
+		fprintf(stderr, "Couldn't init SDL video: %s", SDL_GetError());
 		return 1;
 	}
 
