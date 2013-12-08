@@ -522,7 +522,7 @@ static void set_subsystem_info( model_subsystem *subsystemp, char *props, char *
 		// *** determine how the subsys rotates ***
 
 		// CASE OF STEPPED ROTATION
-		if ( (p = strstr(props, "$stepped")) != NULL) {
+		if ( (strstr(props, "$stepped")) != NULL) {
 
 			subsystemp->stepped_rotation = new(stepped_rotation);
 			subsystemp->flags |= MSS_FLAG_STEPPED_ROTATE;
@@ -1423,7 +1423,7 @@ int read_model_file(polymodel * pm, char *filename, int n_subsystems, model_subs
 					// Find end of number
 					parsed_string = strchr(parsed_string, ',');
 					if (parsed_string == NULL) {
-						Warning( LOCATION,
+						Error( LOCATION,
 							"Submodel '%s' of model '%s' has an improperly formatted $uvec: declaration in its properties."
 							"\n\n$uvec: should be followed by 3 numbers separated with commas."
 							"\n\nCouldn't find first comma (,)!",
@@ -1440,7 +1440,7 @@ int read_model_file(polymodel * pm, char *filename, int n_subsystems, model_subs
 					// Find end of number
 					parsed_string = strchr(parsed_string, ',');
 					if (parsed_string == NULL) {
-						Warning( LOCATION,
+						Error( LOCATION,
 							"Submodel '%s' of model '%s' has an improperly formatted $uvec: declaration in its properties."
 							"\n\n$uvec: should be followed by 3 numbers separated with commas."
 							"\n\nCouldn't find second comma (,)!",
@@ -1466,7 +1466,7 @@ int read_model_file(polymodel * pm, char *filename, int n_subsystems, model_subs
 						// Find end of number
 						parsed_string = strchr(parsed_string, ',');
 						if (parsed_string == NULL) {
-							Warning( LOCATION,
+							Error( LOCATION,
 								"Submodel '%s' of model '%s' has an improperly formatted $fvec: declaration in its properties."
 								"\n\n$fvec: should be followed by 3 numbers separated with commas."
 								"\n\nCouldn't find first comma (,)!",
@@ -1483,7 +1483,7 @@ int read_model_file(polymodel * pm, char *filename, int n_subsystems, model_subs
 						// Find end of number
 						parsed_string = strchr(parsed_string, ',');
 						if (parsed_string == NULL) {
-							Warning( LOCATION,
+							Error( LOCATION,
 								"Submodel '%s' of model '%s' has an improperly formatted $fvec: declaration in its properties."
 								"\n\n$fvec: should be followed by 3 numbers separated with commas."
 								"\n\nCouldn't find second comma (,)!",
@@ -2208,6 +2208,9 @@ int read_model_file(polymodel * pm, char *filename, int n_subsystems, model_subs
 				for(idx=0; idx<num_ins; idx++){
 					// get the detail level
 					pm->ins[idx].detail_level = cfread_int(fp);
+					if (pm->ins[idx].detail_level < 0) {
+						Warning(LOCATION, "Model '%s': insignia uses an invalid LOD (%i)\n", pm->filename, pm->ins[idx].detail_level);
+					}
 
 					// # of faces
 					num_faces = cfread_int(fp);
@@ -2494,9 +2497,7 @@ int model_load(char *filename, int n_subsystems, model_subsystem *subsystems, in
 #endif
 
 	if (read_model_file(pm, filename, n_subsystems, subsystems, ferror) < 0)	{
-		if (pm != NULL) {
-			delete pm;
-		}
+		delete pm;
 
 		Polygon_models[num] = NULL;
 		return -1;

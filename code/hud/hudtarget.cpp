@@ -4008,7 +4008,7 @@ void HudGaugeLeadIndicator::renderLeadCurrentTarget()
 
 	srange = ship_get_secondary_weapon_range(Player_ship);
 
-	if ( swp->current_secondary_bank >= 0 )
+	if ( (swp->current_secondary_bank >= 0) && (swp->secondary_bank_weapons[swp->current_secondary_bank] >= 0) )
 	{
 		int bank = swp->current_secondary_bank;
 		tmp = &Weapon_info[swp->secondary_bank_weapons[bank]];
@@ -4028,7 +4028,7 @@ void HudGaugeLeadIndicator::renderLeadCurrentTarget()
 
 	//do dumbfire lead indicator - color is orange (255,128,0) - bright, (192,96,0) - dim
 	//phreak changed 9/01/02
-	if(swp->current_secondary_bank>=0) {
+	if((swp->current_secondary_bank>=0) && (swp->secondary_bank_weapons[swp->current_secondary_bank] >= 0)) {
 		int bank=swp->current_secondary_bank;
 		wip=&Weapon_info[swp->secondary_bank_weapons[bank]];
 
@@ -4285,7 +4285,7 @@ void HudGaugeLeadSight::render(float frametime)
 
 	srange = ship_get_secondary_weapon_range(Player_ship);
 
-	if ( swp->current_secondary_bank >= 0 ) {
+	if ( (swp->current_secondary_bank >= 0) && (swp->secondary_bank_weapons[swp->current_secondary_bank] >= 0) ) {
 		int bank = swp->current_secondary_bank;
 		tmp = &Weapon_info[swp->secondary_bank_weapons[bank]];
 		if ( !(tmp->wi_flags & WIF_HOMING) && !(tmp->wi_flags & WIF_LOCKED_HOMING && Player->target_in_lock_cone) ) {
@@ -4312,7 +4312,7 @@ void HudGaugeLeadSight::render(float frametime)
 
 	//do dumbfire lead indicator - color is orange (255,128,0) - bright, (192,96,0) - dim
 	//phreak changed 9/01/02
-	if(swp->current_secondary_bank>=0)
+	if((swp->current_secondary_bank>=0) && (swp->secondary_bank_weapons[swp->current_secondary_bank] >= 0))
 	{
 		int bank=swp->current_secondary_bank;
 		wip=&Weapon_info[swp->secondary_bank_weapons[bank]];
@@ -4443,7 +4443,9 @@ void hud_target_change_check()
 		}
 
 		player_stop_cargo_scan_sound();
-		hud_shield_hit_reset(&Objects[Player_ai->target_objnum]);
+		if ( (Player_ai->target_objnum >= 0) && (Player_ai->target_objnum < MAX_OBJECTS) ) {
+			hud_shield_hit_reset(&Objects[Player_ai->target_objnum]);
+		}
 		hud_targetbox_init_flash();
 		hud_targetbox_start_flash(TBOX_FLASH_NAME);
 		hud_gauge_popup_start(HUD_TARGET_MINI_ICON);
@@ -4457,7 +4459,6 @@ void hud_target_change_check()
 
 		if ( Players[Player_num].flags & PLAYER_FLAGS_AUTO_MATCH_SPEED ) {
 			Players[Player_num].flags &= ~PLAYER_FLAGS_MATCH_TARGET;
-//			player_match_target_speed("", "", XSTR("Matching speed of newly acquired target",-1));
 			player_match_target_speed();
 		}
 		else {
@@ -4496,7 +4497,6 @@ void hud_target_change_check()
 
 		if ( Players[Player_num].flags & PLAYER_FLAGS_AUTO_MATCH_SPEED ) {
 			if ( !(Players[Player_num].flags & PLAYER_FLAGS_MATCH_TARGET) ) {
-//				player_match_target_speed("", "", XSTR("Matching target speed",-1));
 				player_match_target_speed();
 			}
 		}

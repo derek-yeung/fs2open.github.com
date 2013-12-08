@@ -254,7 +254,7 @@ void model_allocate_interp_data(int n_verts = 0, int n_norms = 0, int n_list_ver
 			Interp_norms = NULL;
 		}
 		// Interp_norms can't be reliably realloc'd so free and malloc it on each resize (no data needs to be carried over)
-		Interp_norms = (vec3d**) vm_malloc( n_norms * sizeof(vec3d) );
+		Interp_norms = (vec3d**) vm_malloc( n_norms * sizeof(vec3d *) );
 
 		// these next two lighting things aren't values that need to be carried over, but we need to make sure they are 0 by default
 		if (Interp_light_applied != NULL) {
@@ -1688,7 +1688,6 @@ int model_interp_sub(void *model_ptr, polymodel * pm, bsp_info *sm, int do_box_c
 	while ( chunk_type != OP_EOF )	{
 
 		switch (chunk_type) {
-		case OP_EOF: return 1;
 		case OP_DEFPOINTS:		model_interp_defpoints(p,pm,sm); break;
 		case OP_FLATPOLY:		model_interp_flatpoly(p,pm); break;
 		case OP_TMAPPOLY:		model_interp_tmappoly(p,pm); break;
@@ -1870,73 +1869,6 @@ MONITOR( NumModelsRend )
 MONITOR( NumHiModelsRend )
 MONITOR( NumMedModelsRend )
 MONITOR( NumLowModelsRend )
-
-///**
-// * Draws a bitmap with the specified 3d width & height
-// * @return 1 if off screen, 0 if not
-// */
-//int model_get_rotated_bitmap_points(vertex *pnt,float angle, float rad, vertex *v)
-//{
-//	float sa, ca;
-//	int i;
-//
-//	Assert( G3_count == 1 );
-//
-//	sa = (float)sin(angle);
-//	ca = (float)cos(angle);
-//
-//	float width, height;
-//
-//	width = height = rad;
-//
-//	v[0].world.xyz.x = (-width*ca - height*sa)*Matrix_scale.xyz.x + pnt->world.xyz.x;
-//	v[0].world.xyz.y = (-width*sa + height*ca)*Matrix_scale.xyz.y + pnt->world.xyz.y;
-//	v[0].world.xyz.z = pnt->world.xyz.z;
-//	v[0].screen.xyw.w = 0.0f;
-//	v[0].texture_position.u = 0.0f;
-//	v[0].texture_position.v = 0.0f;
-//
-//	v[1].world.xyz.x = (width*ca - height*sa)*Matrix_scale.xyz.x + pnt->world.xyz.x;
-//	v[1].world.xyz.y = (width*sa + height*ca)*Matrix_scale.xyz.y + pnt->world.xyz.y;
-//	v[1].world.xyz.z = pnt->world.xyz.z;
-//	v[1].screen.xyw.w = 0.0f;
-//	v[1].texture_position.u = 1.0f;
-//	v[1].texture_position.v = 0.0f;
-//
-//	v[2].world.xyz.x = (width*ca + height*sa)*Matrix_scale.xyz.x + pnt->world.xyz.x;
-//	v[2].world.xyz.y = (width*sa - height*ca)*Matrix_scale.xyz.y + pnt->world.xyz.y;
-//	v[2].world.xyz.z = pnt->world.xyz.z;
-//	v[2].screen.xyw.w = 0.0f;
-//	v[2].texture_position.u = 1.0f;
-//	v[2].texture_position.v = 1.0f;
-//
-//	v[3].world.xyz.x = (-width*ca + height*sa)*Matrix_scale.xyz.x + pnt->world.xyz.x;
-//	v[3].world.xyz.y = (-width*sa - height*ca)*Matrix_scale.xyz.y + pnt->world.xyz.y;
-//	v[3].world.xyz.z = pnt->world.xyz.z;
-//	v[3].screen.xyw.w = 0.0f;
-//	v[3].texture_position.u = 0.0f;
-//	v[3].texture_position.v = 1.0f;
-//
-//	ubyte codes_and=0xff;
-//
-//	float sw,z;
-//	z = pnt->world.xyz.z - rad / 4.0f;
-//	if ( z < 0.0f ) z = 0.0f;
-//	sw = 1.0f / z;
-//
-//	for (i=0; i<4; i++ )	{
-//		//now code the four points
-//		codes_and &= g3_code_vertex(&v[i]);
-//		v[i].flags = 0;		// mark as not yet projected
-//		g3_project_vertex(&v[i]);
-//		v[i].screen.xyw.w = sw;
-//	}
-//
-//	if (codes_and)
-//		return 1;		//1 means off screen
-//
-//	return 0;
-//}
 
 float Interp_depth_scale = 1500.0f;
 

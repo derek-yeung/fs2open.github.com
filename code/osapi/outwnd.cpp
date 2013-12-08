@@ -59,12 +59,6 @@ char find_text[85];
 struct outwnd_filter_struct {
 	char name[NAME_LENGTH];
 	bool enabled;
-
-	outwnd_filter_struct( ) 
-		: enabled( false )
-	{ 
-		name[ 0 ] = 0;
-	}
 };
 
 SCP_vector<outwnd_filter_struct> OutwndFilter;

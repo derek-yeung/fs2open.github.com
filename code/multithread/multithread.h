@@ -4,10 +4,9 @@
 #include "object/object.h"
 #include "object/objcollide.h"
 #include "SDL.h"
+#include "limits.h"
 
 #define MULTITHREADING_ENABLED
-//#define MULTITHREADING_ENABLED2
-//#define MULTITHREADING_ENABLED3
 #define MAX_THREADS											256
 
 #define SAFETY_TIME											2
@@ -40,24 +39,38 @@ typedef struct
 
 typedef struct
 {
-	obj_pair pair;
-	bool processed;
-	int (*operation_func)(obj_pair);
-	unsigned char func_result;
-} collision_pair;
+	obj_pair objs;
+	int signature_a;
+	int signature_b;
+	unsigned char processed;
+	//for future functionality
+//	int (*operation_func)(obj_pair);
+//	int collision_result;
+//	int func_result;
+} collision_data;
+
+typedef struct
+{
+	collision_data *collision;
+	//copy of object pointers for reading
+	object *a;
+	object *b;
+} thread_vars;
 
 typedef enum
 {
-//  THREAD_TYPE_OBJECT_MOVE,
-//  THREAD_TYPE_DOCKING,
-	THREAD_TYPE_COLLISION,
-	THREAD_TYPE_INVALID
-} thread_type;
+	COLLISION_RESULT_NEVER = -1,
+	COLLISION_RESULT_COLLISION = 0,
+	COLLISION_RESULT_INVALID = INT_MAX
+} collision_result;
 
 typedef enum
 {
-	COLLISION_PAIR_FLAG_COLLIDED, COLLISION_PAIR_FLAG_RESULT, COLLISION_PAIR_FLAG_EXECUTED, COLLISION_PAIR_FLAG_INVALID
-} collision_pair_flag;
+	PROCESS_STATE_UNPROCESSED,
+	PROCESS_STATE_BUSY,
+	PROCESS_STATE_FINISHED,
+	PROCESS_STATE_INVALID
+} process_state;
 
 extern SDL_mutex *render_mutex;
 extern SDL_mutex *g3_count_mutex;

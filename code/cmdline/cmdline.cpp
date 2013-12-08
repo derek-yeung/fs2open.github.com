@@ -878,6 +878,7 @@ int cmdline_parm::get_int()
 
 		// secondly, we still need to get it right for the user's sake...
 		char *moron = strstr(args, ",");
+
 		if ( moron && ((strlen(moron) + 1) < strlen(args)) ) {
 			// we get the last arg, since it's the newest one
 			offset = strlen(args) - strlen(moron) + 1;

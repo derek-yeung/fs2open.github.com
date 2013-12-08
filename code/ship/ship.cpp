@@ -3746,13 +3746,15 @@ int parse_ship_values(ship_info* sip, bool isTemplate, bool first_time, bool rep
 							current_trigger->end = 0;
 					}else{
 
-						required_string("+delay:");
-						stuff_int(&current_trigger->start); 
-
-						current_trigger->reverse_start = -1;	//have some code figure this out for us
+						if(optional_string("+delay:"))
+							stuff_int(&current_trigger->start); 
+						else
+							current_trigger->start = 0;
 
 						if ( optional_string("+reverse_delay:") )
 							stuff_int(&current_trigger->reverse_start);
+						else
+							current_trigger->reverse_start = -1; //have some code figure this out for us
 		
 						if(optional_string("+absolute_angle:")){
 							current_trigger->absolute = true;
@@ -3777,11 +3779,16 @@ int parse_ship_values(ship_info* sip, bool isTemplate, bool first_time, bool rep
 						current_trigger->vel.xyz.y = fl_radians(current_trigger->vel.xyz.y);
 						current_trigger->vel.xyz.z = fl_radians(current_trigger->vel.xyz.z);
 		
-						required_string("+acceleration:");
-						stuff_vec3d(&current_trigger->accel );
-						current_trigger->accel.xyz.x = fl_radians(current_trigger->accel.xyz.x);
-						current_trigger->accel.xyz.y = fl_radians(current_trigger->accel.xyz.y);
-						current_trigger->accel.xyz.z = fl_radians(current_trigger->accel.xyz.z);
+						if (optional_string("+acceleration:")){
+							stuff_vec3d(&current_trigger->accel );
+							current_trigger->accel.xyz.x = fl_radians(current_trigger->accel.xyz.x);
+							current_trigger->accel.xyz.y = fl_radians(current_trigger->accel.xyz.y);
+							current_trigger->accel.xyz.z = fl_radians(current_trigger->accel.xyz.z);
+						} else {
+							current_trigger->accel.xyz.x = 0.0f;
+							current_trigger->accel.xyz.y = 0.0f;
+							current_trigger->accel.xyz.z = 0.0f;
+						}
 
 						if(optional_string("+time:"))
 							stuff_int(&current_trigger->end );
@@ -7037,7 +7044,7 @@ void ship_destroy_instantly(object *ship_obj, int shipnum)
 	Assert(!(ship_obj == Player_obj));
 	Assert(!(Game_mode & GM_MULTIPLAYER));
 
-	// undocking and death preperation
+	// undocking and death preparation
 	ship_stop_fire_primary(ship_obj);
 	ai_deathroll_start(ship_obj);
 
@@ -8865,7 +8872,7 @@ void show_ship_subsys_count()
 	for ( objp = GET_FIRST(&obj_used_list); objp != END_OF_LIST(&obj_used_list); objp = GET_NEXT(objp) ) {
 		o_type = (int)objp->type;
 		if (o_type == OBJ_SHIP) {
-			count += Ship_info[Ships[o_type].ship_info_index].n_subsystems;
+			count += Ship_info[Ships[objp->instance].ship_info_index].n_subsystems;
 		}
 	}
 
@@ -9523,6 +9530,11 @@ void change_ship_type(int n, int ship_type, int by_sexp)
 		sp->flags2 |= SF2_DONT_COLLIDE_INVIS;
 	else if (sip_orig->flags & SIF_SHIP_CLASS_DONT_COLLIDE_INVIS)	// changing FROM a don't-collide-invisible ship class
 		sp->flags2 &= ~SF2_DONT_COLLIDE_INVIS;
+
+	if (sip->flags & SIF_NO_COLLIDE)								// changing TO a no_collide ship
+		Objects[sp->objnum].flags &= ~OF_COLLIDES;
+	else if (sip_orig->flags & SIF_NO_COLLIDE)						// changing FROM a no_collide ship
+		Objects[sp->objnum].flags |= OF_COLLIDES;
 
 	if (sip->flags2 & SIF2_NO_ETS)
 		sp->flags2 |= SF2_NO_ETS;
@@ -11016,7 +11028,6 @@ int ship_fire_secondary( object *obj, int allow_swarm )
 	polymodel	*pm;
 	vec3d		missile_point, pnt, firing_pos;
 	bool has_fired = false;		// Used to determine whether to fire the scripting hook
-	float t;
 
 	Assert( obj != NULL );
 
@@ -11211,6 +11222,8 @@ int ship_fire_secondary( object *obj, int allow_swarm )
 		shipp->corkscrew_missile_bank = bank;
 		return 1;		//	Note: Missiles didn't get fired, but the frame interval code will fire them.
 	}	
+
+	float t;
 
 	if (Weapon_info[weapon].burst_shots > swp->burst_counter[bank_adjusted]) {
 		t = Weapon_info[weapon].burst_delay;
@@ -11886,10 +11899,27 @@ int get_available_secondary_weapons(object *objp, int *outlist, int *outbanklist
 	return count;
 }
 
+void wing_bash_ship_name(char *ship_name, const char *wing_name, int index)
+{
+	// if wing name has a hash symbol, create the ship name a particular way
+	// (but don't do this for names that have the hash as the last character)
+	const char *p = get_pointer_to_first_hash_symbol(wing_name);
+	if ((p != NULL) && (*(p+1) != '\0'))
+	{
+		size_t len = (p - wing_name);
+		strncpy(ship_name, wing_name, len);
+		sprintf(ship_name + len, NOX(" %d"), index);
+		strcat(ship_name, p);
+	}
+	// most of the time we should create the name the standard retail way
+	else
+		sprintf(ship_name, NOX("%s %d"), wing_name, index);
+}
+
 /**
  * Return the object index of the ship with name *name.
  */
-int wing_name_lookup(char *name, int ignore_count)
+int wing_name_lookup(const char *name, int ignore_count)
 {
 	int i, wing_limit;
 
@@ -11919,7 +11949,7 @@ int wing_name_lookup(char *name, int ignore_count)
  * Needed in addition to wing_name_lookup because it does a straight lookup without
  * caring about how many ships are in the wing, etc.
  */
-int wing_lookup(char *name)
+int wing_lookup(const char *name)
 {
    int idx;
 	for(idx=0;idx<Num_wings;idx++)
@@ -11932,7 +11962,7 @@ int wing_lookup(char *name)
 /**
  * Return the index of Ship_info[].name that is *token.
  */
-int ship_info_lookup_sub(char *token)
+int ship_info_lookup_sub(const char *token)
 {
 	int	i;
 
@@ -11946,7 +11976,7 @@ int ship_info_lookup_sub(char *token)
 /**
  * Return the index of Ship_templates[].name that is *token.
  */
-int ship_template_lookup(char *token)
+int ship_template_lookup(const char *token)
 {
 	int	i;
 
@@ -11959,10 +11989,10 @@ int ship_template_lookup(char *token)
 }
 
 // Goober5000
-int ship_info_lookup(char *token)
+int ship_info_lookup(const char *token)
 {
 	int idx;
-	char *p;
+	const char *p;
 	char name[NAME_LENGTH], temp1[NAME_LENGTH], temp2[NAME_LENGTH];
 
 	// bogus
@@ -12074,7 +12104,7 @@ int ship_info_lookup(char *token)
 /**
  * Return the ship index of the ship with name *name.
  */
-int ship_name_lookup(char *name, int inc_players)
+int ship_name_lookup(const char *name, int inc_players)
 {
 	int	i;
 
@@ -12097,7 +12127,7 @@ int ship_name_lookup(char *name, int inc_players)
 	return -1;
 }
 
-int ship_type_name_lookup(char *name)
+int ship_type_name_lookup(const char *name)
 {
 	// bogus
 	if(name == NULL || !strlen(name)){
@@ -16857,7 +16887,7 @@ int ship_has_engine_power(ship *shipp)
 }
 
 // Goober5000
-int ship_starting_wing_lookup(char *wing_name)
+int ship_starting_wing_lookup(const char *wing_name)
 {
 	for (int i = 0; i < MAX_STARTING_WINGS; i++)
 	{
@@ -16869,7 +16899,7 @@ int ship_starting_wing_lookup(char *wing_name)
 }
 
 // Goober5000
-int ship_squadron_wing_lookup(char *wing_name)
+int ship_squadron_wing_lookup(const char *wing_name)
 {
 	// TvT uses a different set of wing names from everything else
 	if (MULTI_TEAM)
@@ -16893,7 +16923,7 @@ int ship_squadron_wing_lookup(char *wing_name)
 }
 
 // Goober5000
-int ship_tvt_wing_lookup(char *wing_name)
+int ship_tvt_wing_lookup(const char *wing_name)
 {
 	for (int i = 0; i < MAX_TVT_WINGS; i++)
 	{

@@ -134,7 +134,11 @@ static void mc_check_face(model_collision * MC_struct_ptr, int nv, vec3d **verts
 		if ( uvl_list )	{
 			MC_struct_ptr->MC_info->hit_u = u;
 			MC_struct_ptr->MC_info->hit_v = v;
-			MC_struct_ptr->MC_info->hit_bitmap = MC_struct_ptr->MC_polymodel->maps[ntmap].textures[TM_BASE_TYPE].GetTexture();
+			if(ntmap < 0) {
+				MC_struct_ptr->MC_info->hit_bitmap = -1;
+			} else {
+				MC_struct_ptr->MC_info->hit_bitmap = MC_struct_ptr->MC_polymodel->maps[ntmap].textures[TM_BASE_TYPE].GetTexture();
+			}
 		}
 		
 		if(ntmap >= 0){
@@ -220,7 +224,11 @@ static void mc_check_sphereline_face( model_collision * MC_struct_ptr, int nv, v
 			if ( uvl_list )	{
 				MC_struct_ptr->MC_info->hit_u = u;
 				MC_struct_ptr->MC_info->hit_v = v;
-				MC_struct_ptr->MC_info->hit_bitmap = MC_struct_ptr->MC_polymodel->maps[ntmap].textures[TM_BASE_TYPE].GetTexture();
+				if(ntmap < 0) {
+					MC_struct_ptr->MC_info->hit_bitmap = -1;
+				} else {
+					MC_struct_ptr->MC_info->hit_bitmap = MC_struct_ptr->MC_polymodel->maps[ntmap].textures[TM_BASE_TYPE].GetTexture();
+				}
 			}
 
 			if(ntmap >= 0){
@@ -283,7 +291,11 @@ static void mc_check_sphereline_face( model_collision * MC_struct_ptr, int nv, v
 				MC_struct_ptr->MC_info->hit_point = hit_point;
 				MC_struct_ptr->MC_info->hit_submodel = MC_struct_ptr->MC_submodel;
 				MC_struct_ptr->MC_info->edge_hit = 1;
-				MC_struct_ptr->MC_info->hit_bitmap = MC_struct_ptr->MC_polymodel->maps[ntmap].textures[TM_BASE_TYPE].GetTexture();
+				if(ntmap < 0) {
+					MC_struct_ptr->MC_info->hit_bitmap = -1;
+				} else {
+					MC_struct_ptr->MC_info->hit_bitmap = MC_struct_ptr->MC_polymodel->maps[ntmap].textures[TM_BASE_TYPE].GetTexture();
+				}
 
 				if(ntmap >= 0){
 					MC_struct_ptr->MC_info->t_poly = poly;

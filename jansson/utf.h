@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2012 Petri Lehtinen <petri@digip.org>
+ * Copyright (c) 2009-2013 Petri Lehtinen <petri@digip.org>
  *
  * Jansson is free software; you can redistribute it and/or modify
  * it under the terms of the MIT license. See LICENSE for details.
@@ -13,8 +13,8 @@
 
 #ifdef HAVE_INTTYPES_H
 /* inttypes.h includes stdint.h in a standard environment, so there's
- no need to include stdint.h separately. If inttypes.h doesn't define
- int32_t, it's defined in config.h. */
+no need to include stdint.h separately. If inttypes.h doesn't define
+int32_t, it's defined in config.h. */
 #include <inttypes.h>
 #endif /* HAVE_INTTYPES_H */
 
