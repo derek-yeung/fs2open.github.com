@@ -1248,17 +1248,7 @@ void opengl_set_vsync(int status)
 		return;
 	}
 
-#if defined(__APPLE__)
-	// GLInt on 10.6 is an actual int now, instead of a long
-	// This will need further testing once Snow Leopard 10.6 goes RTM
-	CGLSetParameter(CGLGetCurrentContext(), kCGLCPSwapInterval, (GLint*)&status);
-#elif defined(_WIN32)
-	vwglSwapIntervalEXT(status);
-#else
-	// NOTE: this may not work well with the closed NVIDIA drivers since those use the
-	//       special "__GL_SYNC_TO_VBLANK" environment variable to manage sync
-	vglXSwapIntervalSGI(status);
-#endif
+	SDL_GL_SetSwapInterval(status);
 
 	GL_CHECK_FOR_ERRORS("end of set_vsync()");
 }
@@ -1545,6 +1535,8 @@ void opengl_setup_function_pointers()
 //	gr_screen.gf_shade				= gr_opengl_shade;
 	gr_screen.gf_string				= gr_opengl_string;
 	gr_screen.gf_circle				= gr_opengl_circle;
+	gr_screen.gf_unfilled_circle	= gr_opengl_unfilled_circle;
+	gr_screen.gf_arc				= gr_opengl_arc;
 	gr_screen.gf_curve				= gr_opengl_curve;
 
 	gr_screen.gf_line				= gr_opengl_line;

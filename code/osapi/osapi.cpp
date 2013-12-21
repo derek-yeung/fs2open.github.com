@@ -203,7 +203,7 @@ void os_init(const char * wclass, const char * title, const char *app_name, cons
 	strcpy_s( szWinTitle, title );
 	strcpy_s( szWinClass, wclass );	
 
-	INITIALIZE_CRITICAL_SECTION( Os_lock );
+	Os_lock = SDL_CreateMutex();
 
 	mprintf(("  Initializing SDL...\n"));
 
@@ -293,13 +293,13 @@ void os_sleep(uint ms)
 // Used to stop message processing
 void os_suspend()
 {
-	ENTER_CRITICAL_SECTION( Os_lock );	
+	SDL_LockMutex( Os_lock );	
 }
 
 // resume message processing
 void os_resume()
 {
-	LEAVE_CRITICAL_SECTION( Os_lock );	
+	SDL_UnlockMutex( Os_lock );	
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -309,12 +309,12 @@ void os_resume()
 // called at shutdown. Makes sure all thread processing terminates.
 void os_deinit()
 {
-	DELETE_CRITICAL_SECTION(Os_lock);
+	SDL_DestroyMutex(Os_lock);
 
 	SDL_Quit();
 }
 
-extern std::map<int, int> SDLtoFS2;
+extern SCP_map<int, int> SDLtoFS2;
 extern void joy_set_button_state(int button, int state);
 extern void joy_set_hat_state(int position);
 
@@ -340,20 +340,20 @@ void os_poll()
 					case SDL_WINDOWEVENT_RESTORED:
 					case SDL_WINDOWEVENT_FOCUS_GAINED:
 					{
-							if (!fAppActive) {
-								game_unpause();
-								fAppActive = true;
-							}
-						break;
+						if (!fAppActive) {
+							game_unpause();
+							fAppActive = true;
 						}
+						break;
+					}
 					case SDL_WINDOWEVENT_CLOSE:
 						gameseq_post_event(GS_EVENT_QUIT_GAME);
 						break;
-					}
 				}
-				gr_activate(fAppActive);
-				break;
 			}
+			gr_activate(fAppActive);
+			break;
+		}
 
 		case SDL_SYSWMEVENT:
 #ifdef WIN32
@@ -373,39 +373,39 @@ void os_poll()
 #endif // WIN32
 			break;
 
-			case SDL_KEYDOWN:
-				if (SDLtoFS2[event.key.keysym.scancode]) {
-					key_mark(SDLtoFS2[event.key.keysym.scancode], 1, 0);
-				}
-				break;
+		case SDL_KEYDOWN:
+			if (SDLtoFS2[event.key.keysym.scancode]) {
+				key_mark(SDLtoFS2[event.key.keysym.scancode], 1, 0);
+			}
+			break;
 
-			case SDL_KEYUP:
-				if (SDLtoFS2[event.key.keysym.scancode]) {
-					key_mark(SDLtoFS2[event.key.keysym.scancode], 0, 0);
-				}
-				break;
+		case SDL_KEYUP:
+			if (SDLtoFS2[event.key.keysym.scancode]) {
+				key_mark(SDLtoFS2[event.key.keysym.scancode], 0, 0);
+			}
+			break;
 
-			case SDL_MOUSEBUTTONDOWN:
-			case SDL_MOUSEBUTTONUP:
-				if (event.button.button == SDL_BUTTON_LEFT)
-					mouse_mark_button(MOUSE_LEFT_BUTTON, event.button.state);
-				else if (event.button.button == SDL_BUTTON_MIDDLE)
-					mouse_mark_button(MOUSE_MIDDLE_BUTTON, event.button.state);
-				else if (event.button.button == SDL_BUTTON_RIGHT)
-					mouse_mark_button(MOUSE_RIGHT_BUTTON, event.button.state);
+		case SDL_MOUSEBUTTONDOWN:
+		case SDL_MOUSEBUTTONUP:
+			if (event.button.button == SDL_BUTTON_LEFT)
+				mouse_mark_button(MOUSE_LEFT_BUTTON, event.button.state);
+			else if (event.button.button == SDL_BUTTON_MIDDLE)
+				mouse_mark_button(MOUSE_MIDDLE_BUTTON, event.button.state);
+			else if (event.button.button == SDL_BUTTON_RIGHT)
+				mouse_mark_button(MOUSE_RIGHT_BUTTON, event.button.state);
 
-				break;
+			break;
 
-			case SDL_JOYHATMOTION:
-				joy_set_hat_state(event.jhat.value);
-				break;
+		case SDL_JOYHATMOTION:
+			joy_set_hat_state(event.jhat.value);
+			break;
 
-			case SDL_JOYBUTTONDOWN:
-			case SDL_JOYBUTTONUP:
-				if (event.jbutton.button < JOY_NUM_BUTTONS) {
-					joy_set_button_state(event.jbutton.button, event.jbutton.state);
-				}
-				break;
+		case SDL_JOYBUTTONDOWN:
+		case SDL_JOYBUTTONUP:
+			if (event.jbutton.button < JOY_NUM_BUTTONS) {
+				joy_set_button_state(event.jbutton.button, event.jbutton.state);
+			}
+			break;
 		
 		case SDL_MOUSEMOTION:
 			mouse_event(event.motion.x, event.motion.y, event.motion.xrel, event.motion.yrel);
@@ -425,15 +425,15 @@ void debug_int3(char *file, int line)
 	// Try to get a backtrace on linux
 
 #	ifdef WIN32
-#if defined(_MSC_VER) && _MSC_VER >= 1400
+#		if defined(_MSC_VER) && _MSC_VER >= 1400
 	__debugbreak( );
-#elif defined(_MSC_VER)
+#		elif defined(_MSC_VER)
 	_asm int 3;
-#elif defined __GNUC__
+#		elif defined __GNUC__
 	asm("int $3");
-#else
-#error debug_int3: unknown compiler
-#endif
+#		else
+#			error debug_int3: unknown compiler
+#		endif
 #	elif defined(__linux__)
 #	define SIZE 1024
 	char **symbols;

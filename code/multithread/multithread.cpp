@@ -86,15 +86,6 @@ void create_threads()
 	char buffer[50];
 
 	threads_alive = true;
-//	setup_pair.objs.a = NULL;
-//	setup_pair.objs.b = NULL;
-//	setup_pair.objs.check_collision = NULL;
-//	setup_pair.objs.next_check_time = -1;
-//	setup_pair.objs.next = NULL;
-//	setup_pair.processed = true;
-//	setup_pair.signature_a = -1;
-//	setup_pair.signature_b = -1;
-//	setup_pair.operation_func = NULL;
 	setup_vars.collision = NULL;
 
 	collision_master_mutex = SDL_CreateMutex();

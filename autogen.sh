@@ -116,12 +116,8 @@ do
 	##  echo "**Warning**: No such directory \`$k'.  Ignored."
         fi
       done
-      echo "Running $ACLOCAL $aclocalinclude ..."
-      "$ACLOCAL" $aclocalinclude
-      echo "Running $AUTOMAKE --add-missing --copy --foreign $am_opt ..."
-      "$AUTOMAKE" --add-missing --copy --foreign $am_opt
-      echo "Running autoconf..."
-      autoconf
+      echo "Running autoreconf..."
+      autoreconf --install
     )
   fi
 done
