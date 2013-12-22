@@ -14,6 +14,7 @@
 
 #include "globalincs/pstypes.h"
 #include "weapon/beam.h"
+#include "multithread/multithread.h"
 
 class object;
 struct CFILE;
@@ -51,15 +52,6 @@ typedef struct collision_info_struct {
 // type specific collision modules.
 //===============================================================================
 
-// Keeps track of pairs of objects for collision detection
-typedef struct obj_pair	{
-	object *a;
-	object *b;
-	int (*check_collision)( obj_pair * pair );
-	int	next_check_time;	// a timestamp that when elapsed means to check for a collision
-	struct obj_pair *next;
-} obj_pair;
-
 
 #define COLLISION_OF(a,b) (((a)<<8)|(b))
 
@@ -71,23 +63,6 @@ extern int collision_type;
 
 #define SUBMODEL_NO_ROT_HIT	0
 #define SUBMODEL_ROT_HIT		1
-
-class collider_pair
-{
-public:
-	object *a;
-	object *b;
-	int signature_a;
-	int signature_b;
-	int next_check_time;
-	bool initialized;
-
-	// we need to define a constructor because the hash map can
-	// implicitly insert an object when we use the [] operator
-	collider_pair()
-		: a(NULL), b(NULL), signature_a(-1), signature_b(-1), next_check_time(-1), initialized(false)
-	{}
-};
 
 void set_hit_struct_info(collision_info_struct *hit, mc_info *mc, int submodel_rot_hit);
 
@@ -136,6 +111,7 @@ int collide_weapon_weapon( obj_pair * pair );
 // Returns 1 if all future collisions between these can be ignored
 // CODE is locatated in CollideShipWeapon.cpp
 int collide_ship_weapon( obj_pair * pair );
+int collide_ship_weapon_safe( obj_pair * pair );
 void ship_weapon_do_hit_stuff(object *ship_obj, object *weapon_obj, vec3d *world_hitpos, vec3d *hitpos, int quadrant_num, int submodel_num = -1);
 
 // Checks debris-weapon collisions.  pair->a is debris and pair->b is weapon.
@@ -241,4 +217,6 @@ inline bool reject_obj_pair_on_parent(object *A, object *B)
 
 	return false;
 }
+
+
 #endif

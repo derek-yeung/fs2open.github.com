@@ -13,7 +13,7 @@ AC_CANONICAL_HOST
 AC_CANONICAL_TARGET
 
 dnl we need at least version 1.6.1 of automake, well it's as far down as has been tested anyway
-AM_INIT_AUTOMAKE([ 1.6.1 no-define dist-bzip2 ])
+AM_INIT_AUTOMAKE([ 1.6.1 no-define dist-bzip2 subdir-objects ])
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 AC_DEFINE([NO_CD_CHECK])
 
