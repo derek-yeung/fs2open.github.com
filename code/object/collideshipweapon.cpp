@@ -588,7 +588,7 @@ int check_inside_radius_for_big_ships( object *ship, object *weapon, obj_pair *p
 void collide_ship_weapon_exec(obj_pair * pair, collision_exec_data *data)
 {
 	data->ship_weapon.wp->collisionOccured = true;
-	memcpy(&data->ship_weapon.wp->collisionInfo, data->ship_weapon.mc, sizeof(mc_info));
+	memcpy(&data->ship_weapon.wp->collisionInfo, &(data->ship_weapon.mc), sizeof(mc_info));
 
 	Script_system.SetHookObjects(4, "Ship", pair->a, "Weapon", pair->b, "Self",pair->a, "Object", pair->b);
 	bool ship_override = Script_system.IsConditionOverride(CHA_COLLIDEWEAPON, pair->a);
@@ -597,7 +597,7 @@ void collide_ship_weapon_exec(obj_pair * pair, collision_exec_data *data)
 	bool weapon_override = Script_system.IsConditionOverride(CHA_COLLIDESHIP, pair->b);
 
 	if(!ship_override && !weapon_override) {
-		ship_weapon_do_hit_stuff(pair->a, pair->b, &(data->ship_weapon.mc->hit_point_world), &(data->ship_weapon.mc->hit_point), data->ship_weapon.quadrant_num, data->ship_weapon.mc->hit_submodel, data->ship_weapon.mc->hit_normal);
+		ship_weapon_do_hit_stuff(pair->a, pair->b, &(data->ship_weapon.mc.hit_point_world), &(data->ship_weapon.mc.hit_point), data->ship_weapon.quadrant_num, data->ship_weapon.mc.hit_submodel, data->ship_weapon.mc.hit_normal);
 	}
 
 	Script_system.SetHookObjects(2, "Self",pair->a, "Object", pair->b);
@@ -613,7 +613,7 @@ void collide_ship_weapon_exec(obj_pair * pair, collision_exec_data *data)
 
 collision_result ship_weapon_check_collision_safe(obj_pair * pair, collision_exec_data *data, float time_limit = 0.0f, int *next_hit = NULL)
 {
-	mc_info mc, mc_shield, mc_hull;
+	mc_info *mc, mc_shield, mc_hull;
 	ship	*shipp;
 	ship_info *sip;
 	weapon	*wp;
@@ -660,18 +660,19 @@ collision_result ship_weapon_check_collision_safe(obj_pair * pair, collision_exe
 
 
 	// Goober5000 - I tried to make collision code here much saner... here begin the (major) changes
-	mc_info_init(&mc);
+	mc = &(data->ship_weapon.mc);
+	mc_info_init(mc);
 
 	// set up collision structs
-	mc.model_instance_num = shipp->model_instance_num;
-	mc.model_num = sip->model_num;
-	mc.submodel_num = -1;
-	mc.orient = &pair->a->orient;
-	mc.pos = &pair->a->pos;
-	mc.p0 = &pair->b->last_pos;
-	mc.p1 = &weapon_end_pos;
-	memcpy(&mc_shield, &mc, sizeof(mc_info));
-	memcpy(&mc_hull, &mc, sizeof(mc_info));
+	mc->model_instance_num = shipp->model_instance_num;
+	mc->model_num = sip->model_num;
+	mc->submodel_num = -1;
+	mc->orient = &pair->a->orient;
+	mc->pos = &pair->a->pos;
+	mc->p0 = &pair->b->last_pos;
+	mc->p1 = &weapon_end_pos;
+	memcpy(&mc_shield, mc, sizeof(mc_info));
+	memcpy(&mc_hull, mc, sizeof(mc_info));
 
 	// (btw, these are leftover comments from below...)
 	//
@@ -849,12 +850,12 @@ collision_result ship_weapon_check_collision_safe(obj_pair * pair, collision_exe
 	// see which impact we use
 	if (shield_collision && valid_hit_occurred)
 	{
-		memcpy(&mc, &mc_shield, sizeof(mc_info));
+		memcpy(mc, &mc_shield, sizeof(mc_info));
 		Assert(quadrant_num >= 0);
 	}
 	else if (hull_collision)
 	{
-		memcpy(&mc, &mc_hull, sizeof(mc_info));
+		memcpy(mc, &mc_hull, sizeof(mc_info));
 		valid_hit_occurred = 1;
 	}
 
@@ -869,7 +870,7 @@ collision_result ship_weapon_check_collision_safe(obj_pair * pair, collision_exe
         shipp->warpout_effect->getWarpPosition(&warp_pnt);
         shipp->warpout_effect->getWarpOrientation(&warp_orient);
 
-        vm_vec_sub(&hit_direction, &mc.hit_point_world, &warp_pnt);
+        vm_vec_sub(&hit_direction, &(mc->hit_point_world), &warp_pnt);
 
         if (vm_vec_dot(&hit_direction, &warp_orient.vec.fvec) < 0.0f)
         {
@@ -880,7 +881,7 @@ collision_result ship_weapon_check_collision_safe(obj_pair * pair, collision_exe
 	// deal with predictive collisions.  Find their actual hit time and see if they occured in current frame
 	if (next_hit && valid_hit_occurred) {
 		// find hit time
-		*next_hit = (int) (1000.0f * (mc.hit_dist*(flFrametime + time_limit) - flFrametime) );
+		*next_hit = (int) (1000.0f * (mc->hit_dist*(flFrametime + time_limit) - flFrametime) );
 		if (*next_hit > 0)
 			// if hit occurs outside of this frame, do not do damage
 			return COLLISION_RESULT_NO_COLLISION;
@@ -889,9 +890,9 @@ collision_result ship_weapon_check_collision_safe(obj_pair * pair, collision_exe
 	if ( valid_hit_occurred )
 	{
 		data->ship_weapon.wp = wp;
-		data->ship_weapon.mc = &mc;
+//		data->ship_weapon.mc = &mc;
 		data->ship_weapon.quadrant_num = quadrant_num;
-		collide_ship_weapon_exec(pair, data);
+//		collide_ship_weapon_exec(pair, data);
 	}
 	else if ((Missiontime - wp->creation_time > F1_0/2) && (wip->wi_flags & WIF_HOMING) && (wp->homing_object == pair->a)) {
 		if (dist < wip->shockwave.inner_rad) {

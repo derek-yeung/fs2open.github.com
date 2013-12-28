@@ -31,6 +31,8 @@
 #define HOOK_UNLOCK
 #endif
 
+#define DUMMY_CHECK_TIME									-2
+
 typedef enum
 {
 	COLLISION_RESULT_NEVER = -1,
@@ -83,7 +85,7 @@ public:
 typedef struct
 {
 	weapon *wp;
-	mc_info *mc;
+	mc_info mc;
 	int quadrant_num;
 } ship_weapon_exec;
 
@@ -115,8 +117,8 @@ typedef struct
 {
 	collision_data *collision;
 	//copy of object pointers for reading
-	object *a;
-	object *b;
+//	object *a;
+//	object *b;
 } thread_vars;
 
 

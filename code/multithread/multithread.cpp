@@ -96,7 +96,7 @@ void collision_func_list_entry_set(unsigned int objtype1, unsigned int objtype2,
 	if(objtype1 != objtype2) {
 		collision_func_list[COLLISION_OF(objtype2,objtype1)].eval_func = eval;
 		collision_func_list[COLLISION_OF(objtype2,objtype1)].exec_func = exec;
-		collision_func_list[COLLISION_OF(objtype1,objtype2)].fallback_func = fallback;
+		collision_func_list[COLLISION_OF(objtype2,objtype1)].fallback_func = fallback;
 	}
 }
 
@@ -160,7 +160,8 @@ void create_threads()
 
 	//populate functions for lookup table
 	collision_func_list.clear();
-	collision_func_list_entry_set(OBJ_SHIP, OBJ_WEAPON, collide_ship_weapon_eval, collide_ship_weapon_exec, collide_ship_weapon_safe);
+	collision_func_list_entry_set(OBJ_SHIP, OBJ_WEAPON, collide_ship_weapon_eval, collide_ship_weapon_exec, collide_ship_weapon);
+//	collision_func_list_entry_set(OBJ_SHIP, OBJ_WEAPON, NULL, NULL, collide_ship_weapon);
 
 	collision_func_list_entry_set(OBJ_DEBRIS, OBJ_WEAPON, NULL, NULL, collide_debris_weapon);
 	collision_func_list_entry_set(OBJ_DEBRIS, OBJ_SHIP, NULL, NULL, collide_debris_ship);
@@ -209,6 +210,7 @@ void collision_pair_add(object *object_1, object *object_2)
 	unsigned int ctype = 0, ctype_2 = 0;
 	unsigned int key = 0;
 	bool cache_hit = false;
+	int temp_check_time = -1;
 
 	if(
 			(object_1 == NULL) ||
@@ -307,6 +309,8 @@ void collision_pair_add(object *object_1, object *object_2)
 			}
 		}
 		pair.objs.check_collision = collision_func_it->second.fallback_func;
+		pair.eval_func = collision_func_it->second.eval_func;
+		pair.exec_func = collision_func_it->second.exec_func;
 	}
 	else {
 		//exit if not found in list
@@ -338,6 +342,8 @@ void collision_pair_add(object *object_1, object *object_2)
 	}
 	collision_cache[key].processed = PROCESS_STATE_UNPROCESSED;
 	collision_cache[key].objs.check_collision = pair.objs.check_collision;
+	collision_cache[key].eval_func = pair.eval_func;
+	collision_cache[key].exec_func = pair.exec_func;
 
 	if ( cache_hit &&  pair.objs.a->type != OBJ_BEAM ) {
 		// if this signature is valid, make the necessary checks to see if we need to collide check
@@ -407,7 +413,18 @@ void collision_pair_add(object *object_1, object *object_2)
 		}
 	}
 
-	collision_list.push_back(key);
+	temp_check_time = collision_cache[key].objs.next_check_time;
+	if (collision_cache[key].eval_func && collision_cache[key].exec_func) {
+		collision_list.push_back(key);
+	} else {
+		Assert(collision_cache[key].objs.check_collision);
+		if (collision_cache[key].objs.check_collision(&collision_cache[key].objs)) {
+			// don't have to check ever again
+			collision_cache[key].objs.next_check_time = -1;
+		} else {
+			collision_cache[key].objs.next_check_time = temp_check_time;
+		}
+	}
 }
 
 void execute_collisions()
@@ -451,15 +468,15 @@ void execute_collisions()
 					SDL_UnlockMutex(conditions[i].mutex);
 					continue;
 				} else {
-					if (
-							(collision_cache[*collision_list_it].objs.a == thread_collision_vars[i].a) ||
-							(collision_cache[*collision_list_it].objs.a == thread_collision_vars[i].b) ||
-							(collision_cache[*collision_list_it].objs.b == thread_collision_vars[i].a) ||
-							(collision_cache[*collision_list_it].objs.b == thread_collision_vars[i].b)) {
-						nprintf(("Multithread", "multithread: execution %d object pair %d conflicts with thread %d\n", executions, object_counter, i));
-						skip = true;
-						break;
-					}
+//					if (
+//							(collision_cache[*collision_list_it].objs.a == thread_collision_vars[i].a) ||
+//							(collision_cache[*collision_list_it].objs.a == thread_collision_vars[i].b) ||
+//							(collision_cache[*collision_list_it].objs.b == thread_collision_vars[i].a) ||
+//							(collision_cache[*collision_list_it].objs.b == thread_collision_vars[i].b)) {
+//						nprintf(("Multithread", "multithread: execution %d object pair %d conflicts with thread %d\n", executions, object_counter, i));
+//						skip = true;
+//						break;
+//					}
 				}
 			}
 
@@ -483,8 +500,10 @@ void execute_collisions()
 					nprintf(("Multithread", "multithread: execution %d object pair %d assigned to thread %d\n", executions, object_counter, i));
 					thread_collision_vars[i].collision = &collision_cache[*collision_list_it];
 					thread_collision_vars[i].collision->processed = PROCESS_STATE_BUSY;
-					thread_collision_vars[i].a = thread_collision_vars[i].collision->objs.a;
-					thread_collision_vars[i].b = thread_collision_vars[i].collision->objs.b;
+//					thread_collision_vars[i].a = thread_collision_vars[i].collision->objs.a;
+//					thread_collision_vars[i].b = thread_collision_vars[i].collision->objs.b;
+//					memset(&(thread_collision_vars[i].collision->exec_data), 0, sizeof(collision_exec_data));
+					thread_collision_vars[i].collision->exec_data.result = COLLISION_RESULT_INVALID;
 
 					if (SDL_CondSignal(conditions[i].condition) < 0) {
 						Error(LOCATION, "supercollider conditionl var signal failed: %s\n", SDL_GetError());
@@ -514,6 +533,9 @@ void execute_collisions()
 				loop_counter++;
 				break;
 			}
+			if (collision_cache[*collision_list_it].exec_data.result == COLLISION_RESULT_COLLISION) {
+				collision_cache[*collision_list_it].exec_func(&(collision_cache[*collision_list_it].objs), &(collision_cache[*collision_list_it].exec_data));
+			}
 		}
 	}
 	if (threads_used > threads_used_record) {
@@ -538,7 +560,6 @@ void execute_collisions()
 int supercollider_thread(void *num)
 {
 	int thread_num = *(int *) num;
-	int temp_check_time = -1;
 
 	nprintf(("Multithread", "multithread: supercollider_thread %d started\n", thread_num));
 
@@ -554,16 +575,31 @@ int supercollider_thread(void *num)
 			//check for exit condition
 			return 0;
 		}
+//
+//		if((thread_collision_vars[thread_num].collision->eval_func == NULL) || (thread_collision_vars[thread_num].collision->exec_func == NULL)) {
+//			if (thread_collision_vars[thread_num].collision->objs.check_collision(&(thread_collision_vars[thread_num].collision->objs))) {
+//				// don't have to check ever again
+//				thread_collision_vars[thread_num].collision->objs.next_check_time = -1;
+//			} else {
+//				//the functions can mess with this value - put it back
+//				thread_collision_vars[thread_num].collision->objs.next_check_time = temp_check_time;
+//			}
+//		}
+//		else {
+//			retval = thread_collision_vars[thread_num].collision->eval_func(&(thread_collision_vars[thread_num].collision->objs), &(thread_collision_vars[thread_num].collision->exec_data));
+//			if(thread_collision_vars[thread_num].collision->objs.next_check_time == DUMMY_CHECK_TIME) {
+//				if (retval == COLLISION_RESULT_NO_COLLISION) {
+//					thread_collision_vars[thread_num].collision->objs.next_check_time = temp_check_time;
+//				}
+//				else {
+//					thread_collision_vars[thread_num].collision->objs.next_check_time = -1;
+//				}
+//			}
+//			//test code
+//			if ()
+//		}
 
-		temp_check_time = thread_collision_vars[thread_num].collision->objs.next_check_time;
-
-		if (thread_collision_vars[thread_num].collision->objs.check_collision(&(thread_collision_vars[thread_num].collision->objs))) {
-			// don't have to check ever again
-			thread_collision_vars[thread_num].collision->objs.next_check_time = -1;
-		} else {
-			//the functions can mess with this value - put it back
-			thread_collision_vars[thread_num].collision->objs.next_check_time = temp_check_time;
-		}
+		thread_collision_vars[thread_num].collision->exec_data.result = thread_collision_vars[thread_num].collision->eval_func(&(thread_collision_vars[thread_num].collision->objs), &(thread_collision_vars[thread_num].collision->exec_data));
 
 		nprintf(("Multithread", "multithread: thread %d done\n", thread_num));
 		thread_collision_vars[thread_num].collision->processed = PROCESS_STATE_FINISHED;
