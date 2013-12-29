@@ -276,6 +276,8 @@ void collision_pair_add(object *object_1, object *object_2)
 					}
 					break;
 				}
+				default:
+					Error(LOCATION, "Should never get here\n");
 			}
 		}
 		pair.objs.check_collision = collision_func_it->second.fallback_func;
@@ -416,19 +418,10 @@ void execute_collisions()
 		}
 		object_counter = 0;
 		for (collision_list_it = collision_list.begin(); collision_list_it != collision_list.end(); collision_list_it++, object_counter++) {
-			if (collision_cache[*collision_list_it].processed == PROCESS_STATE_FINISHED) {
+			if (collision_cache[*collision_list_it].processed >= PROCESS_STATE_COLLIDED) {
 				nprintf(("Multithread", "multithread: execution %d object pair %d already done\n", executions, object_counter));
 				continue;
 			}
-
-//			for (i = 0; i < Cmdline_num_threads; i++) {
-//				SDL_return = SDL_TryLockMutex(conditions[i].mutex);
-//				if (SDL_return == 0) {
-//					//not assigned, can't be busy
-//					SDL_UnlockMutex(conditions[i].mutex);
-//					continue;
-//				}
-//			}
 
 			//check for a free thread to handle the collision
 			while (1) {
@@ -440,12 +433,6 @@ void execute_collisions()
 						thread_counter = (thread_counter + 1) % Cmdline_num_threads;
 						continue;
 					}
-//					if (collision_cache[*collision_list_it].processed == PROCESS_STATE_BUSY) {
-//						nprintf(("Multithread", "multithread: execution %d object pair %d busy\n", executions, object_counter));
-//						SDL_UnlockMutex(conditions[thread_counter].mutex);
-//						thread_counter = (thread_counter + 1) % Cmdline_num_threads;
-//						break;
-//					}
 					nprintf(("Multithread", "multithread: execution %d object pair %d assigned to thread %d\n", executions, object_counter, thread_counter));
 					thread_collision_vars[thread_counter].collision = &collision_cache[*collision_list_it];
 					thread_collision_vars[thread_counter].collision->processed = PROCESS_STATE_BUSY;
@@ -469,16 +456,20 @@ void execute_collisions()
 		}
 
 		//make sure we processs everything on the list
-		done = true;
-		for (collision_list_it = collision_list.begin(); collision_list_it != collision_list.end(); collision_list_it++) {
-			if (collision_cache[*collision_list_it].processed != PROCESS_STATE_FINISHED) {
-				nprintf(("Multithread", "multithread: execution %d - looping back\n", executions));
-				done = false;
-				loop_counter++;
-				break;
+		while (1) {
+			done = true;
+			for (collision_list_it = collision_list.begin(); collision_list_it != collision_list.end(); collision_list_it++) {
+				if (collision_cache[*collision_list_it].processed < PROCESS_STATE_COLLIDED) {
+					done = false;
+				} else if (collision_cache[*collision_list_it].processed == PROCESS_STATE_COLLIDED) {
+					if (collision_cache[*collision_list_it].exec_data.result == COLLISION_RESULT_COLLISION) {
+						collision_cache[*collision_list_it].exec_func(&(collision_cache[*collision_list_it].objs), &(collision_cache[*collision_list_it].exec_data));
+					}
+					collision_cache[*collision_list_it].processed = PROCESS_STATE_EXECUTED;
+				}
 			}
-			if (collision_cache[*collision_list_it].exec_data.result == COLLISION_RESULT_COLLISION) {
-				collision_cache[*collision_list_it].exec_func(&(collision_cache[*collision_list_it].objs), &(collision_cache[*collision_list_it].exec_data));
+			if (done == true) {
+				break;
 			}
 		}
 	}
@@ -519,7 +510,7 @@ int supercollider_thread(void *num)
 		thread_collision_vars[thread_num].collision->exec_data.result = thread_collision_vars[thread_num].collision->eval_func(&(thread_collision_vars[thread_num].collision->objs), &(thread_collision_vars[thread_num].collision->exec_data));
 
 		nprintf(("Multithread", "multithread: thread %d done\n", thread_num));
-		thread_collision_vars[thread_num].collision->processed = PROCESS_STATE_FINISHED;
+		thread_collision_vars[thread_num].collision->processed = PROCESS_STATE_COLLIDED;
 		thread_collision_vars[thread_num].collision = NULL;
 	}
 	if (SDL_UnlockMutex(conditions[thread_num].mutex) < 0) {

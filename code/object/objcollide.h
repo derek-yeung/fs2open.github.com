@@ -78,7 +78,7 @@ void obj_check_all_collisions();
 void obj_sort_and_collide();
 void obj_quicksort_colliders(SCP_vector<int> *list, int left, int right, int axis);
 void obj_find_overlap_colliders(SCP_vector<int> *overlap_list_out, SCP_vector<int> *list, int axis, bool collide);
-float obj_get_collider_endpoint(int obj_num, int axis, bool min);
+//float obj_get_collider_endpoint(int obj_num, int axis, bool min);
 void obj_collide_pair(object *A, object *B);
 
 // retimes all collision pairs to be checked (in 25ms by default)
