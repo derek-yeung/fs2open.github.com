@@ -6,6 +6,7 @@
 #include "SDL.h"
 #include "limits.h"
 #include "weapon/weapon.h"
+#include "weapon/beam.h"
 
 #define MULTITHREADING_ENABLED
 #define MAX_THREADS											256
@@ -91,10 +92,20 @@ typedef struct
 
 typedef struct
 {
+	beam *b;
+	mc_info mc_entry;
+	mc_info mc_exit;
+	int quadrant_num;
+	int hull_exit_collision;
+} beam_ship_exec;
+
+typedef struct
+{
 	collision_result result;
 	union
 	{
 		ship_weapon_exec ship_weapon;
+		beam_ship_exec beam_ship;
 	};
 } collision_exec_data;
 
@@ -144,5 +155,8 @@ void collision_pair_clear();
 
 collision_result collide_ship_weapon_eval(obj_pair * pair, collision_exec_data *data);
 void collide_ship_weapon_exec(obj_pair * pair, collision_exec_data *data);
+
+collision_result beam_collide_ship_eval(obj_pair *pair, collision_exec_data *data);
+void beam_collide_ship_exec(obj_pair *pair, collision_exec_data *data);
 
 #endif

@@ -3463,3 +3463,206 @@ DCF(beam_list, "")
 		}
 	}
 }
+
+void beam_collide_ship_exec(obj_pair *pair, collision_exec_data *data)
+{
+	// add to the collision_list
+
+	Script_system.SetHookObjects(4, "Ship", pair->a, "Beam", pair->b, "Self",pair->a, "Object", pair->b);
+	bool ship_override = Script_system.IsConditionOverride(CHA_COLLIDEBEAM, pair->a);
+
+	Script_system.SetHookObjects(2, "Self",pair->b, "Object", pair->a);
+	bool weapon_override = Script_system.IsConditionOverride(CHA_COLLIDESHIP, pair->b);
+
+	if(!ship_override && !weapon_override) {
+		beam_add_collision(data->beam_ship.b, pair->a, &(data->beam_ship.mc_entry), data->beam_ship.quadrant_num);
+	}
+
+	Script_system.SetHookObjects(2, "Self",pair->a, "Object", pair->b);
+	if(!(weapon_override && !ship_override))
+		Script_system.RunCondition(CHA_COLLIDEBEAM, '\0', NULL, pair->a);
+
+	Script_system.SetHookObjects(2, "Self",pair->b, "Object", pair->a);
+	if((weapon_override && !ship_override) || (!weapon_override && !ship_override))
+		Script_system.RunCondition(CHA_COLLIDESHIP, '\0', NULL, pair->b);
+
+	Script_system.RemHookVars(4, "Ship", "Beam", "Self","Object");
+
+	// if we got "tooled", add an exit hole too
+	if (data->beam_ship.hull_exit_collision)
+		beam_add_collision(data->beam_ship.b, pair->a, &(data->beam_ship.mc_exit), data->beam_ship.quadrant_num, 1);
+}
+
+// collide a beam with a ship, returns 1 if we can ignore all future collisions between the 2 objects
+collision_result beam_collide_ship_eval(obj_pair *pair, collision_exec_data *data)
+{
+	ship *shipp;
+	ship_info *sip;
+	weapon_info *bwi;
+	mc_info mc_shield, mc_hull_enter;
+	int model_num;
+	float widest;
+	collision_result retval = COLLISION_RESULT_NO_COLLISION;
+
+	// bogus
+	if (pair == NULL) {
+		return COLLISION_RESULT_NO_COLLISION;
+	}
+
+	// get the beam
+	Assert(pair->a->instance >= 0);
+	Assert(pair->a->type == OBJ_BEAM);
+	Assert(Beams[pair->a->instance].objnum == OBJ_INDEX(pair->a));
+	data->beam_ship.b = &Beams[pair->a->instance];
+
+	// Don't check collisions for warping out player if past stage 1.
+	if (Player->control_mode >= PCM_WARPOUT_STAGE1) {
+		if ( pair->a == Player_obj ) return COLLISION_RESULT_NO_COLLISION;
+		if ( pair->b == Player_obj ) return COLLISION_RESULT_NO_COLLISION;
+	}
+
+	// if the "warming up" timestamp has not expired
+	if ((data->beam_ship.b->warmup_stamp != -1) || (data->beam_ship.b->warmdown_stamp != -1)) {
+		return COLLISION_RESULT_NO_COLLISION;
+	}
+
+	// if the beam is on "safety", don't collide with anything
+	if (data->beam_ship.b->flags & BF_SAFETY) {
+		return COLLISION_RESULT_NO_COLLISION;
+	}
+
+	// if the colliding object is the shooting object, return 1 so this is culled
+	if (pair->b == data->beam_ship.b->objp) {
+		return COLLISION_RESULT_NEVER;
+	}
+
+	// try and get a model
+	model_num = beam_get_model(pair->b);
+	if (model_num < 0) {
+		return COLLISION_RESULT_NEVER;
+	}
+
+#ifndef NDEBUG
+	Beam_test_ints++;
+	Beam_test_ship++;
+#endif
+
+	// get the ship
+	Assert(pair->b->instance >= 0);
+	Assert(pair->b->type == OBJ_SHIP);
+	Assert(Ships[pair->b->instance].objnum == OBJ_INDEX(pair->b));
+	if ((pair->b->type != OBJ_SHIP) || (pair->b->instance < 0))
+		return COLLISION_RESULT_NEVER;
+	shipp = &Ships[pair->b->instance];
+
+	int	valid_hit_occurred = 0;
+	sip = &Ship_info[shipp->ship_info_index];
+	bwi = &Weapon_info[data->beam_ship.b->weapon_info_index];
+
+	polymodel *pm = model_get(model_num);
+
+	// get the widest portion of the beam
+	widest = beam_get_widest(data->beam_ship.b);
+
+
+	// Goober5000 - I tried to make collision code much saner... here begin the (major) changes
+	mc_info_init(&data->beam_ship.mc_entry);
+
+	// set up collision structs, part 1
+	data->beam_ship.mc_entry.model_instance_num = shipp->model_instance_num;
+	data->beam_ship.mc_entry.model_num = model_num;
+	data->beam_ship.mc_entry.submodel_num = -1;
+	data->beam_ship.mc_entry.orient = &pair->b->orient;
+	data->beam_ship.mc_entry.pos = &pair->b->pos;
+	data->beam_ship.mc_entry.p0 = &data->beam_ship.b->last_start;
+	data->beam_ship.mc_entry.p1 = &data->beam_ship.b->last_shot;
+
+	// maybe do a sphereline
+	if (widest > pair->b->radius * BEAM_AREA_PERCENT) {
+		data->beam_ship.mc_entry.radius = widest * 0.5f;
+		data->beam_ship.mc_entry.flags = MC_CHECK_SPHERELINE;
+	} else {
+		data->beam_ship.mc_entry.flags = MC_CHECK_RAY;
+	}
+
+	// set up collision structs, part 2
+	memcpy(&mc_shield, &data->beam_ship.mc_entry, sizeof(mc_info));
+	memcpy(&mc_hull_enter, &data->beam_ship.mc_entry, sizeof(mc_info));
+	memcpy(&data->beam_ship.mc_exit, &data->beam_ship.mc_entry, sizeof(mc_info));
+
+	// reverse this vector so that we check for exit holes as opposed to entrance holes
+	data->beam_ship.mc_exit.p1 = &data->beam_ship.b->last_start;
+	data->beam_ship.mc_exit.p0 = &data->beam_ship.b->last_shot;
+
+	// set flags
+	mc_shield.flags |= MC_CHECK_SHIELD;
+	mc_hull_enter.flags |= MC_CHECK_MODEL;
+	data->beam_ship.mc_exit.flags |= MC_CHECK_MODEL;
+
+	// check all three kinds of collisions
+	int shield_collision = (pm->shield.ntris > 0) ? model_collide(&mc_shield) : 0;
+	int hull_enter_collision = model_collide(&mc_hull_enter);
+	data->beam_ship.hull_exit_collision = (beam_will_tool_target(data->beam_ship.b, pair->b)) ? model_collide(&data->beam_ship.mc_exit) : 0;
+
+	// check shields for impact
+	// (tooled ships are probably not going to be maintaining a shield over their exit hole,
+	// therefore we need only check the entrance, just as with conventional weapons)
+	if (!(pair->b->flags & OF_NO_SHIELDS))
+	{
+		// pick out the shield quadrant
+		if (shield_collision)
+			data->beam_ship.quadrant_num = get_quadrant(&mc_shield.hit_point, pair->b);
+		else if (hull_enter_collision && (sip->flags2 & SIF2_SURFACE_SHIELDS))
+			data->beam_ship.quadrant_num = get_quadrant(&mc_hull_enter.hit_point, pair->b);
+
+		// make sure that the shield is active in that quadrant
+		if ((data->beam_ship.quadrant_num >= 0) && ((shipp->flags & SF_DYING) || !ship_is_shield_up(pair->b, data->beam_ship.quadrant_num)))
+			data->beam_ship.quadrant_num = -1;
+
+		// see if we hit the shield
+		if (data->beam_ship.quadrant_num >= 0)
+		{
+			// do the hit effect
+			if (shield_collision) {
+				if (mc_shield.shield_hit_tri != -1) {
+					add_shield_point(OBJ_INDEX(pair->b), mc_shield.shield_hit_tri, &mc_shield.hit_point);
+				}
+			} else {
+				/* TODO */;
+			}
+
+			// if this weapon pierces the shield, then do the hit effect, but act like a shield collision never occurred;
+			// otherwise, we have a valid hit on this shield
+			if (bwi->wi_flags2 & WIF2_PIERCE_SHIELDS)
+				data->beam_ship.quadrant_num = -1;
+			else
+				valid_hit_occurred = 1;
+		}
+	}
+
+	// see which impact we use
+	if (shield_collision && valid_hit_occurred)
+	{
+		memcpy(&data->beam_ship.mc_entry, &mc_shield, sizeof(mc_info));
+		Assert(data->beam_ship.quadrant_num >= 0);
+	}
+	else if (hull_enter_collision)
+	{
+		memcpy(&data->beam_ship.mc_entry, &mc_hull_enter, sizeof(mc_info));
+		valid_hit_occurred = 1;
+	}
+
+	// if we got a hit
+	if (valid_hit_occurred) {
+		retval = COLLISION_RESULT_COLLISION;
+	}
+
+	// add this guy to the lighting list
+	if(Use_GLSL < 2)
+		beam_add_light(data->beam_ship.b, OBJ_INDEX(pair->b), 1, NULL);
+
+	// reset timestamp to timeout immediately
+	pair->next_check_time = timestamp(0);
+
+	return retval;
+}

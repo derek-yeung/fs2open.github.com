@@ -1025,19 +1025,3 @@ collision_result collide_ship_weapon_eval(obj_pair * pair, collision_exec_data *
 
 	return COLLISION_RESULT_NEVER;
 }
-
-int collide_ship_weapon_safe(obj_pair * pair)
-{
-	collision_exec_data data;
-	collision_result retval = collide_ship_weapon_eval(pair, &data);
-
-	if (retval == COLLISION_RESULT_COLLISION) {
-		collide_ship_weapon_exec(pair, &data);
-	}
-
-	if ((retval == COLLISION_RESULT_NEVER) || (retval == COLLISION_RESULT_COLLISION)) {
-		return 1;
-	} else {
-		return 0;
-	}
-}

@@ -1504,7 +1504,7 @@ void obj_move_all(float frametime)
 			obj_check_all_collisions();
 		} else {
 #ifdef MULTITHREADING_ENABLED
-		  collision_pair_clear();
+			collision_pair_clear();
 #endif
 			obj_sort_and_collide();
 #ifdef MULTITHREADING_ENABLED

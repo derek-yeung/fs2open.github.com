@@ -97,7 +97,7 @@ inline int mc_ray_boundingbox( model_collision * MC_struct_ptr, vec3d *min, vec3
 // detects whether or not a vector has collided with a polygon.  vector points stored in global
 // MC_struct_ptr->MC_p0 and MC_struct_ptr->MC_p1.  Results stored in global model_collision * MC_struct_ptr.
 
-static void mc_check_face(model_collision * MC_struct_ptr, int nv, vec3d **verts, vec3d *plane_pnt, float face_rad, vec3d *plane_norm, uv_pair *uvl_list, int ntmap, ubyte *poly, bsp_collision_leaf* bsp_leaf)
+static inline void mc_check_face(model_collision * MC_struct_ptr, int nv, vec3d **verts, vec3d *plane_pnt, float face_rad, vec3d *plane_norm, uv_pair *uvl_list, int ntmap, ubyte *poly, bsp_collision_leaf* bsp_leaf)
 {
 	vec3d	hit_point;
 	float		dist;
@@ -165,7 +165,7 @@ static void mc_check_face(model_collision * MC_struct_ptr, int nv, vec3d **verts
 //				plane_pnt	=>		center point in plane (about which radius is measured)
 //				face_rad		=>		radius of face 
 //				plane_norm	=>		normal of face
-static void mc_check_sphereline_face( model_collision * MC_struct_ptr, int nv, vec3d ** verts, vec3d * plane_pnt, float face_rad, vec3d * plane_norm, uv_pair * uvl_list, int ntmap, ubyte *poly, bsp_collision_leaf *bsp_leaf)
+static inline void mc_check_sphereline_face( model_collision * MC_struct_ptr, int nv, vec3d ** verts, vec3d * plane_pnt, float face_rad, vec3d * plane_norm, uv_pair * uvl_list, int ntmap, ubyte *poly, bsp_collision_leaf *bsp_leaf)
 {
 	vec3d	hit_point;
 	float		u, v;
@@ -327,7 +327,7 @@ static void mc_check_sphereline_face( model_collision * MC_struct_ptr, int nv, v
 // +16     int         offset from start of chunk to vertex data
 // +20     n_verts*char    norm_counts
 // +offset             vertex data. Each vertex n is a point followed by norm_counts[n] normals.     
-void model_collide_defpoints(model_collision * MC_struct_ptr, ubyte * p)
+inline void model_collide_defpoints(model_collision * MC_struct_ptr, ubyte * p)
 {
 	int n;
 	int nverts = w(p+8);	
@@ -347,7 +347,7 @@ void model_collide_defpoints(model_collision * MC_struct_ptr, ubyte * p)
 	} 
 }
 
-int model_collide_parse_bsp_defpoints(model_collision * MC_struct_ptr, ubyte * p)
+inline int model_collide_parse_bsp_defpoints(model_collision * MC_struct_ptr, ubyte * p)
 {
 	int n;
 	int nverts = w(p+8);	
@@ -381,7 +381,7 @@ int model_collide_parse_bsp_defpoints(model_collision * MC_struct_ptr, ubyte * p
 // +42     byte        blue
 // +43     byte        pad
 // +44     nverts*int  vertlist
-void model_collide_flatpoly(model_collision * MC_struct_ptr, ubyte * p)
+inline void model_collide_flatpoly(model_collision * MC_struct_ptr, ubyte * p)
 {
 	int i;
 	int nv;
@@ -419,7 +419,7 @@ void model_collide_flatpoly(model_collision * MC_struct_ptr, ubyte * p)
 // +36     int         nverts
 // +40     int         tmap_num
 // +44     nverts*(model_tmap_vert) vertlist (n,u,v)
-void model_collide_tmappoly(model_collision * MC_struct_ptr, ubyte * p)
+inline void model_collide_tmappoly(model_collision * MC_struct_ptr, ubyte * p)
 {
 	int i;
 	int nv;
@@ -473,7 +473,7 @@ void model_collide_tmappoly(model_collision * MC_struct_ptr, ubyte * p)
 // 48     int     postlist offset
 // 52     int     online offset
 
-int model_collide_sub( model_collision * MC_struct_ptr, void *model_ptr );
+inline int model_collide_sub( model_collision * MC_struct_ptr, void *model_ptr );
 
 inline void model_collide_sortnorm(model_collision * MC_struct_ptr, ubyte * p)
 {
@@ -543,7 +543,7 @@ inline int model_collide_sub(model_collision * MC_struct_ptr, void *model_ptr )
 	return 1;
 }
 
-void model_collide_bsp_poly(model_collision * MC_struct_ptr, bsp_collision_tree *tree, int leaf_index)
+inline void model_collide_bsp_poly(model_collision * MC_struct_ptr, bsp_collision_tree *tree, int leaf_index)
 {
 	int i;
 	int tested_leaf = leaf_index;
@@ -620,7 +620,7 @@ inline void model_collide_bsp(model_collision * MC_struct_ptr, bsp_collision_tre
 	}
 }
 
-void model_collide_parse_bsp_tmappoly(bsp_collision_leaf *leaf, SCP_vector<model_tmap_vert> *vert_buffer, void *model_ptr)
+inline void model_collide_parse_bsp_tmappoly(bsp_collision_leaf *leaf, SCP_vector<model_tmap_vert> *vert_buffer, void *model_ptr)
 {
 	ubyte *p = (ubyte *)model_ptr;
 
@@ -660,7 +660,7 @@ void model_collide_parse_bsp_tmappoly(bsp_collision_leaf *leaf, SCP_vector<model
 	}
 }
 
-void model_collide_parse_bsp_flatpoly(bsp_collision_leaf *leaf, SCP_vector<model_tmap_vert> *vert_buffer, void *model_ptr)
+inline void model_collide_parse_bsp_flatpoly(bsp_collision_leaf *leaf, SCP_vector<model_tmap_vert> *vert_buffer, void *model_ptr)
 {
 	ubyte *p = (ubyte *)model_ptr;
 
@@ -884,7 +884,7 @@ void model_collide_parse_bsp(bsp_collision_tree *tree, void *model_ptr, int vers
 	vert_buffer.clear();
 }
 
-bool mc_shield_check_common(model_collision * MC_struct_ptr, shield_tri	*tri)
+inline bool mc_shield_check_common(model_collision * MC_struct_ptr, shield_tri	*tri)
 {
 	vec3d * points[3];
 	vec3d hitpoint;
@@ -1281,7 +1281,7 @@ int model_collide(mc_info * model_collision_info)
 	}
 
 
-	//If we found a hit, then rotate it into world coordinates	
+	//If we found a hit, then rotate it into world coordinates
 	if ( MC_struct_ptr->MC_info->num_hits )	{
 		if ( MC_struct_ptr->MC_info->flags & MC_SUBMODEL )	{
 			// If we're just checking one submodel, don't use normal instancing to find world points
@@ -1301,7 +1301,7 @@ int model_collide(mc_info * model_collision_info)
 
 }
 
-void model_collide_preprocess_subobj(vec3d *pos, matrix *orient, polymodel *pm,  polymodel_instance *pmi, int subobj_num)
+inline void model_collide_preprocess_subobj(vec3d *pos, matrix *orient, polymodel *pm,  polymodel_instance *pmi, int subobj_num)
 {
 	submodel_instance *smi = &pmi->submodel[subobj_num];
 
