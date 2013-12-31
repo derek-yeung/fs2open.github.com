@@ -70,7 +70,7 @@ extern DWORD WINAPI SCP_mspdbcs_DumpStackThread( LPVOID pv );
 #endif // PDB_DEBUGGING
 
 /* Initialisation */
-extern void SCP_mspdbcs_Initialise();
-extern void SCP_mspdbcs_Cleanup();
+extern void SCP_mspdbcs_Initialise( );
+extern void SCP_mspdbcs_Cleanup( );
 
 #endif // _MSPDB_CALLSTACK_H_INCLUDED_

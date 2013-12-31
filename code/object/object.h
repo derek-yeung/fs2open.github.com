@@ -142,22 +142,22 @@ class object
 public:
 	class object	*next, *prev;	// for linked lists of objects
 	int				signature;		// Every object ever has a unique signature...
-	char				type;				// what type of object this is... robot, weapon, hostage, powerup, fireball
+	char			type;				// what type of object this is... robot, weapon, hostage, powerup, fireball
 	int				parent;			// This object's parent.
 	int				parent_sig;		// This object's parent's signature
-	char				parent_type;	// This object's parent's type
+	char			parent_type;	// This object's parent's type
 	int				instance;		// which instance.  ie.. if type is Robot, then this indexes into the Robots array
-	uint				flags;			// misc flags.  Call obj_set_flags to change this.
+	uint			flags;			// misc flags.  Call obj_set_flags to change this.
 	vec3d			pos;				// absolute x,y,z coordinate of center of object
 	matrix			orient;			// orientation of object in world
-	float				radius;			// 3d size of object - for collision detection
+	float			radius;			// 3d size of object - for collision detection
 	vec3d			last_pos;		// where object was last frame
 	matrix			last_orient;	// how the object was oriented last frame
 	physics_info	phys_info;		// a physics object
 	int				n_quadrants;	// how many shield quadrants the ship has
 	SCP_vector<float>	shield_quadrant;	//	Shield is broken into components, quadrants by default.
-	float				hull_strength;	//	Remaining hull strength.
-	float				sim_hull_strength;	// Simulated hull strength - used with training weapons.
+	float			hull_strength;	//	Remaining hull strength.
+	float			sim_hull_strength;	// Simulated hull strength - used with training weapons.
 	SCP_vector<int> objsnd_num;		// Index of persistant sound struct.
 	ushort			net_signature;
 	int				num_pairs;		// How many object pairs this is associated with.  When 0 then there are no more.

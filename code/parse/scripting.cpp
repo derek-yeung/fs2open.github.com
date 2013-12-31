@@ -39,6 +39,7 @@ flag_def_list Script_conditions[] =
 	{"Ship type",	CHC_SHIPTYPE,		0},
 	{"Weapon class",CHC_WEAPONCLASS,	0},
 	{"KeyPress",	CHC_KEYPRESS,		0},
+	{"Action",		CHC_ACTION,			0},
 	{"Version",		CHC_VERSION,		0},
 	{"Application",	CHC_APPLICATION,	0}
 };
@@ -51,6 +52,8 @@ flag_def_list Script_actions[] =
 	{"On Splash Screen",		CHA_SPLASHSCREEN,	0},
 	{"On State Start",			CHA_ONSTATESTART,	0},
 	{"On Frame",				CHA_ONFRAME,		0},
+	{"On Action",				CHA_ONACTION,		0},
+	{"On Action Stopped",		CHA_ONACTIONSTOPPED,0},
 	{"On Key Pressed",			CHA_KEYPRESSED,		0},
 	{"On Key Released",			CHA_KEYRELEASED,	0},
 	{"On Mouse Moved",			CHA_MOUSEMOVED,		0},
@@ -307,7 +310,7 @@ bool ConditionedHook::ConditionsValid(int action, object *objp, int more_data)
 						return false;
 					break;
 				}
-			case CHC_WEAPONCLASS: 
+			case CHC_WEAPONCLASS:
 				{
 					if (!(action == CHA_ONWPSELECTED || action == CHA_ONWPDESELECTED || action == CHA_ONWPEQUIPPED || action == CHA_ONWPFIRED || action == CHA_ONTURRETFIRED )) {
 						if(objp == NULL || (objp->type != OBJ_WEAPON && objp->type != OBJ_BEAM))
@@ -438,6 +441,17 @@ bool ConditionedHook::ConditionsValid(int action, object *objp, int more_data)
 						return false;
 					//WMC - could be more efficient, but whatever.
 					if(stricmp(textify_scancode(Current_key_down), scp->data.name))
+						return false;
+					break;
+				}
+			case CHC_ACTION:
+				{
+					if(gameseq_get_depth() < 0)
+						return false;
+
+					int action_index = more_data;
+
+					if (action_index <= 0 || stricmp(scp->data.name, Control_config[action_index].text))
 						return false;
 					break;
 				}
@@ -1331,7 +1345,7 @@ bool script_state::ParseCondition(const char *filename)
 			case CHC_VERSION:
 			case CHC_APPLICATION:
 			default:
-				stuff_string(sct.data.name, F_NAME, NAME_LENGTH);
+				stuff_string(sct.data.name, F_NAME, CONDITION_LENGTH);
 				break;
 		}
 

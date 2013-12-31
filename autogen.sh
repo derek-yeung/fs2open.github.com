@@ -110,7 +110,7 @@ do
     ( cd $dr
       aclocalinclude="$ACLOCAL_FLAGS"
       for k in $macrodirs; do
-  	if test -d $k; then
+        if test -d $k; then
           aclocalinclude="$aclocalinclude -I $k"
   	##else 
 	##  echo "**Warning**: No such directory \`$k'.  Ignored."

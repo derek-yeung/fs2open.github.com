@@ -433,7 +433,7 @@ static bool gr_init_sub(int mode, int width, int height, int depth)
 
 	gr_screen.save_max_w_unscaled = gr_screen.max_w_unscaled;
 	gr_screen.save_max_h_unscaled = gr_screen.max_h_unscaled;
-
+	
 	switch (mode) {
 		case GR_OPENGL:
 			rc = gr_opengl_init();

@@ -111,7 +111,7 @@ object::object()
 	  n_quadrants(0), hull_strength(0.0), sim_hull_strength(0.0), net_signature(0), num_pairs(0), collision_group_id(0)
 {
 	//this is safe for now
-	memset(&(this->phys_info), 0, sizeof(physics_info));
+	//memset(&(this->phys_info), 0, sizeof(physics_info));
 }
 
 object::~object()
@@ -345,7 +345,7 @@ void obj_init()
 	}
 
 	Object_next_signature = 1;	//0 is invalid, others start at 1
-	Num_objects = 0;			
+	Num_objects = 0;
 	Highest_object_index = 0;
 
 	if ( Cmdline_old_collision_sys ) {
@@ -440,7 +440,7 @@ void obj_free(int objnum)
 	objp = &Objects[objnum];
 
 	// remove objp from the used list
-	list_remove( &obj_used_list, objp);
+	list_remove( &obj_used_list, objp );
 
 	// add objp to the end of the free
 	list_append( &obj_free_list, objp );
@@ -613,7 +613,7 @@ void obj_delete(int objnum)
 	obj_snd_delete_type(OBJ_INDEX(objp));		
 
 	objp->type = OBJ_NONE;		//unused!
-	objp->signature = 0;		
+	objp->signature = 0;
 
 	obj_free(objnum);
 }
@@ -1898,7 +1898,7 @@ void obj_reset_all_collisions()
 
 		// next
 		moveup = GET_NEXT(moveup);
-	}		
+	}
 }
 
 // Goober5000

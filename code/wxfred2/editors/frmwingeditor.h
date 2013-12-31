@@ -12,17 +12,17 @@
 
 #include <wx/wx.h>
 
-class frmWingEditor: public fredBase::frmWingEditor
+class frmWingEditor : public fredBase::frmWingEditor
 {
 public:
-	frmWingEditor(wxWindow* parent, wxWindowID id);
+	frmWingEditor( wxWindow* parent, wxWindowID id );
 
 protected:
-	frmWingEditor(void);
-	frmWingEditor(const frmWingEditor& T);
+	frmWingEditor( void );
+	frmWingEditor( const frmWingEditor& T );
 
 	// Handlers for frmWingEditor events
-	void OnClose(wxCloseEvent& event);
+	void OnClose( wxCloseEvent& event );
 
 private:
 };

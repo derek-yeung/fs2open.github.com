@@ -897,8 +897,8 @@ wxFRED_SOURCES = \
 	wxfred2/glcviewport.h \
 	wxfred2/misc/dlgmissionstats.h \
 	wxfred2/misc/dlgmissionstats.cpp \
-	wxfred2/wxfred2.cpp	\
-	wxfred2/wxfred2.h	\
+	wxfred2/wxfred2.cpp \
+	wxfred2/wxfred2.h \
 	wxfred2/help/dlgsexphelp.h \
 	wxfred2/help/dlgsexphelp.cpp \
 	wxfred2/help/dlgaboutbox.h \
