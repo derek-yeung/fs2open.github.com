@@ -1094,11 +1094,7 @@ inline void mc_check_subobj( model_collision * MC_struct_ptr, int mn )
 			MC_struct_ptr->MC_info->hit_bitmap = -1;
 			MC_struct_ptr->MC_info->num_hits++;
 		} else {
-			if ( Cmdline_old_collision_sys ) {
-				model_collide_sub(MC_struct_ptr, sm->bsp_data);
-			} else {
-				model_collide_bsp(MC_struct_ptr, model_get_bsp_collision_tree(sm->collision_tree_index), 0);
-			}
+			model_collide_bsp(MC_struct_ptr, model_get_bsp_collision_tree(sm->collision_tree_index), 0);
 		}
 	}
 

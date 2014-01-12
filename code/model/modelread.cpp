@@ -2662,13 +2662,11 @@ int model_load(char *filename, int n_subsystems, model_subsystem *subsystems, in
 
 	model_octant_create( pm );
 
-	if ( !Cmdline_old_collision_sys ) {
-		for ( i = 0; i < pm->n_models; ++i ) {
-			pm->submodel[i].collision_tree_index = model_create_bsp_collision_tree();
-			bsp_collision_tree *tree = model_get_bsp_collision_tree(pm->submodel[i].collision_tree_index);
+	for (i = 0; i < pm->n_models; ++i) {
+		pm->submodel[i].collision_tree_index = model_create_bsp_collision_tree();
+		bsp_collision_tree *tree = model_get_bsp_collision_tree(pm->submodel[i].collision_tree_index);
 
-			model_collide_parse_bsp(tree, pm->submodel[i].bsp_data, pm->version);
-		}
+		model_collide_parse_bsp(tree, pm->submodel[i].bsp_data, pm->version);
 	}
 
 	// Find the core_radius... the minimum of 

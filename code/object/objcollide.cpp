@@ -47,8 +47,7 @@ SCP_hash_map<uint, collider_pair> Collision_cached_pairs;
 
 struct checkobject;
 extern checkobject CheckObjects[MAX_OBJECTS];
-
-extern int Cmdline_old_collision_sys;
+extern int Cmdline_num_threads;
 
 void obj_pairs_close()
 {
@@ -996,24 +995,36 @@ int collide_remove_weapons( )
 
 	// first pass is to see if any of the weapons don't have collision pairs.
 
-	if ( Cmdline_old_collision_sys ) {
-		opp = &pair_used_list;
-		opp = opp->next;
-		while( opp != NULL )	{
-			// for each collide pair, if the two objects can still collide, then set the remove_weapon
-			// parameter for the weapon to 0.  need to check both parameters
-			if ( opp->a->type == OBJ_WEAPON )
-				crw_check_weapon( opp->a->instance, opp->next_check_time );
+	if (Cmdline_num_threads > 1) {
+		SCP_hash_map<unsigned int, collision_data>::iterator collision_cache_it;
+		collision_data *pair_obj;
+		for ( collision_cache_it = collision_cache.begin(); collision_cache_it != collision_cache.end(); ++collision_cache_it ) {
+			pair_obj = &collision_cache_it->second;
 
-			if ( opp->b->type == OBJ_WEAPON )
-				crw_check_weapon( opp->b->instance, opp->next_check_time );
+			if ( pair_obj->in_use == false ) {
+				continue;
+			}
 
-			opp = opp->next;
+			if ( pair_obj->objs.a->type == OBJ_WEAPON && pair_obj->signature_a == pair_obj->objs.a->signature ) {
+				crw_check_weapon(pair_obj->objs.a->instance, pair_obj->objs.next_check_time);
+
+				if ( crw_status[pair_obj->objs.a->instance] == CRW_CAN_DELETE ) {
+					pair_obj->in_use = false;
+				}
+			}
+
+			if ( pair_obj->objs.b->type == OBJ_WEAPON && pair_obj->signature_b == pair_obj->objs.b->signature ) {
+				crw_check_weapon(pair_obj->objs.b->instance, pair_obj->objs.next_check_time);
+
+				if ( crw_status[pair_obj->objs.b->instance] == CRW_CAN_DELETE ) {
+					pair_obj->in_use = false;
+				}
+			}
 		}
-	} else {
+	}
+	else {
 		SCP_hash_map<uint, collider_pair>::iterator it;
 		collider_pair *pair_obj;
-
 		for ( it = Collision_cached_pairs.begin(); it != Collision_cached_pairs.end(); ++it ) {
 			pair_obj = &it->second;
 			
@@ -1147,15 +1158,29 @@ void obj_remove_collider(int obj_index)
 void obj_reset_colliders()
 {
 	Collision_sort_list.clear();
-	Collision_cached_pairs.clear();
+	if (Cmdline_num_threads > 1) {
+		collision_cache.clear();
+	}
+	else {
+		Collision_cached_pairs.clear();
+	}
 }
 
 void obj_collide_retime_cached_pairs(int checkdly)
 {
-	SCP_hash_map<uint, collider_pair>::iterator it;
+	if (Cmdline_num_threads > 1) {
+		SCP_hash_map<unsigned int, collision_data>::iterator collision_cache_it;
 
-	for ( it = Collision_cached_pairs.begin(); it != Collision_cached_pairs.end(); ++it ) {
-		it->second.next_check_time = timestamp(checkdly);
+		for ( collision_cache_it = collision_cache.begin(); collision_cache_it != collision_cache.end(); ++collision_cache_it ) {
+			collision_cache_it->second.objs.next_check_time = timestamp(checkdly);
+		}
+	}
+	else {
+		SCP_hash_map<uint, collider_pair>::iterator it;
+
+		for ( it = Collision_cached_pairs.begin(); it != Collision_cached_pairs.end(); ++it ) {
+			it->second.next_check_time = timestamp(checkdly);
+		}
 	}
 }
 
@@ -1215,11 +1240,12 @@ void obj_find_overlap_colliders(SCP_vector<int> *overlap_list_out, SCP_vector<in
 				}
 				
 				if ( collide ) {
-#ifdef MULTITHREADING_ENABLED
-					collision_pair_add(&Objects[(*list)[i]], &Objects[overlappers[j]]);
-#else
-					obj_collide_pair(&Objects[(*list)[i]], &Objects[overlappers[j]]);
-#endif
+					if (Cmdline_num_threads > 1) {
+						collision_pair_add(&Objects[(*list)[i]], &Objects[overlappers[j]]);
+					}
+					else {
+						obj_collide_pair(&Objects[(*list)[i]], &Objects[overlappers[j]]);
+					}
 				}
 			} else {
 				overlappers[j] = overlappers.back();

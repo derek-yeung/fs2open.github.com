@@ -166,7 +166,6 @@ Flag exe_params[] =
 	{ "-disable_glsl_model","Don't use shaders for model rendering",	true,	0,					EASY_DEFAULT,		"Troubleshoot",	"http://www.hard-light.net/wiki/index.php/Command-Line_Reference#-disable_glsl_model", },
 	{ "-mipmap",			"Enable mipmapping",						true,	0,					EASY_DEFAULT_MEM,	"Troubleshoot",	"http://www.hard-light.net/wiki/index.php/Command-Line_Reference#-mipmap", },
 	{ "-use_gldrawelements","Don't use glDrawRangeElements",			true,	0,					EASY_DEFAULT,		"Troubleshoot",	"", },
-	{ "-old_collision",		"Use old collision detection system",		true,	0,					EASY_DEFAULT,		"Troubleshoot",	"", },
 
 	{ "-ingame_join",		"Allow in-game joining",					true,	0,					EASY_DEFAULT,		"Experimental",	"http://www.hard-light.net/wiki/index.php/Command-Line_Reference#-ingame_join", },
 	{ "-voicer",			"Enable voice recognition",					true,	0,					EASY_DEFAULT,		"Experimental",	"http://www.hard-light.net/wiki/index.php/Command-Line_Reference#-voicer", },
@@ -415,7 +414,6 @@ cmdline_parm reparse_mainhall_arg("-reparse_mainhall", NULL); //Cmdline_reparse_
 cmdline_parm frame_profile_arg("-profile_frame_time", NULL); //Cmdline_frame_profile
 
 char *Cmdline_start_mission = NULL;
-int Cmdline_old_collision_sys = 0;
 int Cmdline_dis_collisions = 0;
 int Cmdline_dis_weapons = 0;
 int Cmdline_noparseerrors = 0;
@@ -787,7 +785,7 @@ void os_process_cmdline(char* cmdline)
 
 	char** argv = new char*[argc];
 
-	parse_cmdline_string(cmdline, argv);
+	argc = parse_cmdline_string(cmdline, argv);
 
 	os_parse_parms(argc, argv);
 	os_validate_parms(argc, argv);
@@ -1480,9 +1478,6 @@ bool SetCmdlineParams()
 	if ( cache_bitmaps_arg.found() ) {
 		Cmdline_cache_bitmaps = 1;
 	}
-
-	if(old_collision_system.found())
-		Cmdline_old_collision_sys = 1;
 
 	if(dis_collisions.found())
 		Cmdline_dis_collisions = 1;

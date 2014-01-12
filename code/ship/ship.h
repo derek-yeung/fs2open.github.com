@@ -30,6 +30,7 @@
 #include "globalincs/pstypes.h"
 #include "fireball/fireballs.h"
 #include "hud/hud.h"
+#include "multithread/multithread.h"
 
 #include <string>
 

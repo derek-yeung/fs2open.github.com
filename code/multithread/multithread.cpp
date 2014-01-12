@@ -44,9 +44,10 @@ SDL_cond *collision_master_condition = NULL;
 SDL_mutex *render_mutex = NULL;
 SDL_mutex *g3_count_mutex = NULL;
 SDL_mutex *hook_mutex = NULL;
+SDL_mutex *beam_mutex = NULL;
+SDL_mutex *ship_mutex = NULL;
 
 SCP_vector<unsigned int> collision_list;
-SCP_vector<unsigned int>::iterator collision_list_it;
 
 SCP_vector<unsigned int> thread_number;
 SCP_vector<thread_vars> thread_collision_vars;
@@ -62,13 +63,8 @@ typedef struct
 } collision_func_set;
 
 SCP_hash_map<unsigned int, collision_func_set> collision_func_list;
-SCP_hash_map<unsigned int, collision_func_set>::iterator collision_func_it;
 
 SCP_hash_map<unsigned int, collision_data> collision_cache;
-SCP_hash_map<unsigned int, collision_data>::iterator collision_cache_it;
-
-unsigned int executions = 0;
-int threads_used_record = 0;
 
 int supercollider_thread(void *obj_collision_vars_ptr);
 
@@ -115,12 +111,20 @@ void create_threads()
 		Error(LOCATION, "render_mutex create failed: %s\n", SDL_GetError());
 	}
 	g3_count_mutex = SDL_CreateMutex();
-	if (render_mutex == NULL) {
+	if (g3_count_mutex == NULL) {
 		Error(LOCATION, "g3_count_mutex create failed: %s\n", SDL_GetError());
 	}
 	hook_mutex = SDL_CreateMutex();
-	if (render_mutex == NULL) {
+	if (hook_mutex == NULL) {
 		Error(LOCATION, "hook_mutex create failed: %s\n", SDL_GetError());
+	}
+	beam_mutex = SDL_CreateMutex();
+	if (beam_mutex == NULL) {
+		Error(LOCATION, "beam_mutex create failed: %s\n", SDL_GetError());
+	}
+	ship_mutex = SDL_CreateMutex();
+	if (ship_mutex == NULL) {
+		Error(LOCATION, "ship_mutex create failed: %s\n", SDL_GetError());
 	}
 
 	if (Cmdline_num_threads < 1) {
@@ -154,12 +158,16 @@ void create_threads()
 	//populate functions for lookup table
 	collision_func_list.clear();
 	collision_func_list_entry_set(OBJ_SHIP, OBJ_WEAPON, collide_ship_weapon_eval, collide_ship_weapon_exec, collide_ship_weapon);
+//	collision_func_list_entry_set(OBJ_SHIP, OBJ_WEAPON, NULL, NULL, collide_ship_weapon);
 
 	collision_func_list_entry_set(OBJ_DEBRIS, OBJ_WEAPON, NULL, NULL, collide_debris_weapon);
 	collision_func_list_entry_set(OBJ_DEBRIS, OBJ_SHIP, NULL, NULL, collide_debris_ship);
 	collision_func_list_entry_set(OBJ_ASTEROID, OBJ_WEAPON, NULL, NULL, collide_asteroid_weapon);
 	collision_func_list_entry_set(OBJ_ASTEROID, OBJ_SHIP, NULL, NULL, collide_asteroid_ship);
+
 	collision_func_list_entry_set(OBJ_BEAM, OBJ_SHIP, beam_collide_ship_eval, beam_collide_ship_exec, beam_collide_ship);
+//	collision_func_list_entry_set(OBJ_BEAM, OBJ_SHIP, NULL, NULL, beam_collide_ship);
+
 	collision_func_list_entry_set(OBJ_BEAM, OBJ_ASTEROID, NULL, NULL, beam_collide_asteroid);
 	collision_func_list_entry_set(OBJ_BEAM, OBJ_DEBRIS, NULL, NULL, beam_collide_debris);
 	collision_func_list_entry_set(OBJ_BEAM, OBJ_WEAPON, NULL, NULL, beam_collide_missile);
@@ -199,10 +207,12 @@ void collision_pair_clear()
 void collision_pair_add(object *object_1, object *object_2)
 {
 	collision_data pair;
+	collision_data *data = NULL;
 	unsigned int ctype = 0;
 	unsigned int key = 0;
 	bool cache_hit = false;
-	int temp_check_time = -1;
+	SCP_hash_map<unsigned int, collision_data>::iterator collision_cache_it;
+	SCP_hash_map<unsigned int, collision_func_set>::iterator collision_func_it;
 
 	if ((object_1 == NULL) || (object_2 == NULL) ||
 	// Don't check collisions with yourself
@@ -293,34 +303,47 @@ void collision_pair_add(object *object_1, object *object_2)
 
 	if (collision_cache_it == collision_cache.end()) {
 		//collision not cached - create using []
-		collision_cache[key].objs.a = pair.objs.a;
-		collision_cache[key].objs.b = pair.objs.b;
-		collision_cache[key].signature_a = pair.objs.a->signature;
-		collision_cache[key].signature_b = pair.objs.b->signature;
-		collision_cache[key].objs.next_check_time = timestamp(0);
+		data = &collision_cache[key];
+		data->objs.a = pair.objs.a;
+		data->objs.b = pair.objs.b;
+		data->signature_a = pair.objs.a->signature;
+		data->signature_b = pair.objs.b->signature;
+		data->objs.next_check_time = timestamp(0);
+		data->in_use = true;
 	} else {
-		//check for correct pair
-		if ((collision_cache[key].signature_a == collision_cache[key].objs.a->signature) && (collision_cache[key].signature_b == collision_cache[key].objs.b->signature)) {
-			cache_hit = true;
+		data = &collision_cache[key];
+		if(data->in_use == false) {
+			data->objs.a = pair.objs.a;
+			data->objs.b = pair.objs.b;
+			data->signature_a = pair.objs.a->signature;
+			data->signature_b = pair.objs.b->signature;
+			data->objs.next_check_time = timestamp(0);
+			data->in_use = true;
 		} else {
-			collision_cache[key].objs.a = pair.objs.a;
-			collision_cache[key].objs.b = pair.objs.b;
-			collision_cache[key].signature_a = pair.objs.a->signature;
-			collision_cache[key].signature_b = pair.objs.b->signature;
-			collision_cache[key].objs.next_check_time = timestamp(0);
+			//check for correct pair
+			if ((data->signature_a == data->objs.a->signature) && (data->signature_b == data->objs.b->signature)) {
+				cache_hit = true;
+			} else {
+				data->objs.a = pair.objs.a;
+				data->objs.b = pair.objs.b;
+				data->signature_a = pair.objs.a->signature;
+				data->signature_b = pair.objs.b->signature;
+				data->objs.next_check_time = timestamp(0);
+			}
 		}
 	}
-	collision_cache[key].processed = PROCESS_STATE_UNPROCESSED;
-	collision_cache[key].objs.check_collision = pair.objs.check_collision;
-	collision_cache[key].eval_func = pair.eval_func;
-	collision_cache[key].exec_func = pair.exec_func;
+	data->processed = PROCESS_STATE_UNPROCESSED;
+	data->objs.check_collision = pair.objs.check_collision;
+	data->eval_func = pair.eval_func;
+	data->exec_func = pair.exec_func;
+	data->exec_data.result = COLLISION_RESULT_UNEVALUATED;
 
-	if (cache_hit && pair.objs.a->type != OBJ_BEAM) {
+	if (cache_hit && data->objs.a->type != OBJ_BEAM) {
 		// if this signature is valid, make the necessary checks to see if we need to collide check
-		if (collision_cache[key].objs.next_check_time == -1) {
+		if (data->objs.next_check_time == -1) {
 			return;
 		} else {
-			if (!timestamp_elapsed(collision_cache[key].objs.next_check_time)) {
+			if (!timestamp_elapsed(data->objs.next_check_time)) {
 				return;
 			}
 		}
@@ -328,42 +351,42 @@ void collision_pair_add(object *object_1, object *object_2)
 		// only check debris:weapon collisions for player
 		if (pair.objs.check_collision == collide_debris_weapon) {
 			// weapon is object_2
-			if (!(Weapon_info[Weapons[pair.objs.b->instance].weapon_info_index].wi_flags & WIF_TURNS)) {
+			if (!(Weapon_info[Weapons[data->objs.b->instance].weapon_info_index].wi_flags & WIF_TURNS)) {
 				// check for dumbfire weapon
 				// check if debris is behind laser
 				float vdot;
-				if (Weapon_info[Weapons[pair.objs.b->instance].weapon_info_index].subtype == WP_LASER) {
+				if (Weapon_info[Weapons[data->objs.b->instance].weapon_info_index].subtype == WP_LASER) {
 					vec3d velocity_rel_weapon;
-					vm_vec_sub(&velocity_rel_weapon, &pair.objs.b->phys_info.vel, &pair.objs.a->phys_info.vel);
-					vdot = -vm_vec_dot(&velocity_rel_weapon, &pair.objs.b->orient.vec.fvec);
+					vm_vec_sub(&velocity_rel_weapon, &data->objs.b->phys_info.vel, &data->objs.a->phys_info.vel);
+					vdot = -vm_vec_dot(&velocity_rel_weapon, &data->objs.b->orient.vec.fvec);
 				} else {
-					vdot = vm_vec_dot(&pair.objs.a->phys_info.vel, &pair.objs.b->phys_info.vel);
+					vdot = vm_vec_dot(&data->objs.a->phys_info.vel, &data->objs.b->phys_info.vel);
 				}
 				if (vdot <= 0.0f) {
 					// They're heading in opposite directions...
 					// check their positions
 					vec3d weapon2other;
-					vm_vec_sub(&weapon2other, &pair.objs.a->pos, &pair.objs.b->pos);
-					float pdot = vm_vec_dot(&pair.objs.b->orient.vec.fvec, &weapon2other);
-					if (pdot <= -pair.objs.a->radius) {
+					vm_vec_sub(&weapon2other, &data->objs.a->pos, &data->objs.b->pos);
+					float pdot = vm_vec_dot(&data->objs.b->orient.vec.fvec, &weapon2other);
+					if (pdot <= -data->objs.a->radius) {
 						// The other object is behind the weapon by more than
 						// its radius, so it will never hit...
-						collision_cache[key].objs.next_check_time = -1;
+						data->objs.next_check_time = -1;
 						return;
 					}
 				}
 
 				// check dist vs. dist moved during weapon lifetime
 				vec3d delta_v;
-				vm_vec_sub(&delta_v, &pair.objs.b->phys_info.vel, &pair.objs.a->phys_info.vel);
-				if (vm_vec_dist_squared(&pair.objs.a->pos, &pair.objs.b->pos) > (vm_vec_mag_squared(&delta_v) * Weapons[pair.objs.b->instance].lifeleft * Weapons[pair.objs.b->instance].lifeleft)) {
-					collision_cache[key].objs.next_check_time = -1;
+				vm_vec_sub(&delta_v, &data->objs.b->phys_info.vel, &data->objs.a->phys_info.vel);
+				if (vm_vec_dist_squared(&data->objs.a->pos, &data->objs.b->pos) > (vm_vec_mag_squared(&delta_v) * Weapons[data->objs.b->instance].lifeleft * Weapons[data->objs.b->instance].lifeleft)) {
+					data->objs.next_check_time = -1;
 					return;
 				}
 
 				// for nonplayer ships, only create collision pair if close enough
-				if ((pair.objs.b->parent >= 0) && !(Objects[pair.objs.b->parent].flags & OF_PLAYER_SHIP) && (vm_vec_dist(&pair.objs.b->pos, &pair.objs.a->pos) < (4.0f * pair.objs.a->radius + 200.0f))) {
-					collision_cache[key].objs.next_check_time = -1;
+				if ((data->objs.b->parent >= 0) && !(Objects[data->objs.b->parent].flags & OF_PLAYER_SHIP) && (vm_vec_dist(&data->objs.b->pos, &data->objs.a->pos) < (4.0f * data->objs.a->radius + 200.0f))) {
+					data->objs.next_check_time = -1;
 					return;
 				}
 			}
@@ -372,55 +395,36 @@ void collision_pair_add(object *object_1, object *object_2)
 		// don't check same team laser:ship collisions on small ships if not player
 		if (pair.objs.check_collision == collide_ship_weapon) {
 			// weapon is object_2
-			if ((pair.objs.b->parent >= 0) && !(Objects[pair.objs.b->parent].flags & OF_PLAYER_SHIP) && (Ships[Objects[pair.objs.b->parent].instance].team == Ships[pair.objs.a->instance].team) && (Ship_info[Ships[pair.objs.a->instance].ship_info_index].flags & SIF_SMALL_SHIP) && (Weapon_info[Weapons[pair.objs.b->instance].weapon_info_index].subtype == WP_LASER)) {
-				collision_cache[key].objs.next_check_time = -1;
+			if ((data->objs.b->parent >= 0) && !(Objects[data->objs.b->parent].flags & OF_PLAYER_SHIP) && (Ships[Objects[data->objs.b->parent].instance].team == Ships[data->objs.a->instance].team) && (Ship_info[Ships[data->objs.a->instance].ship_info_index].flags & SIF_SMALL_SHIP) && (Weapon_info[Weapons[data->objs.b->instance].weapon_info_index].subtype == WP_LASER)) {
+				data->objs.next_check_time = -1;
 				return;
 			}
 		}
 	}
 
-	temp_check_time = collision_cache[key].objs.next_check_time;
-	if ((Cmdline_num_threads > 1) && collision_cache[key].eval_func && collision_cache[key].exec_func) {
-		collision_list.push_back(key);
-	} else {
-		Assert(collision_cache[key].objs.check_collision);
-		if (collision_cache[key].objs.check_collision(&collision_cache[key].objs)) {
-			// don't have to check ever again
-			collision_cache[key].objs.next_check_time = -1;
-		} else {
-			collision_cache[key].objs.next_check_time = temp_check_time;
-		}
-	}
+	collision_list.push_back(key);
+//	mprintf(("key = %d, ctype = %X, sig A = %d, sig B = %d\n", key, ctype, collision_cache[key].objs.a->signature, collision_cache[key].objs.b->signature));
 }
 
-void execute_collisions()
+void evaluate_collisions()
 {
 	int i;
-	unsigned int loop_counter = 0;
 	bool done = false;
 	int SDL_return;
-	int object_counter;
 	static int thread_counter = 0;
-
-	time_t start_time = time(NULL);
-
-	OPENGL_LOCK
-	if (!G3_count) {
-		g3_start_frame(1);
-	} nprintf(("Multithread", "multithread: execution %d start\n", executions));
+	SCP_vector<unsigned int>::iterator collision_list_it;
 
 	while (done == false) {
 		//go through our collision list
-		nprintf(("Multithread", "multithread: execution %d start main loop %d\n", executions, loop_counter));
-		if ((time(NULL) - start_time) > SAFETY_TIME) {
-			nprintf(("Multithread", "multithread: execution %d - STUCK\n", executions));
-			Error(LOCATION, "Saftey time exceeded\n");
-		}
-		object_counter = 0;
-		for (collision_list_it = collision_list.begin(); collision_list_it != collision_list.end(); collision_list_it++, object_counter++) {
+		for (collision_list_it = collision_list.begin(); collision_list_it != collision_list.end(); collision_list_it++) {
 			if (collision_cache[*collision_list_it].processed >= PROCESS_STATE_COLLIDED) {
-				nprintf(("Multithread", "multithread: execution %d object pair %d already done\n", executions, object_counter));
 				continue;
+			}
+			else {
+				if ((Cmdline_num_threads == 1) || (collision_cache[*collision_list_it].eval_func == NULL)) {
+					collision_cache[*collision_list_it].processed = PROCESS_STATE_COLLIDED;
+					continue;
+				}
 			}
 
 			//check for a free thread to handle the collision
@@ -428,18 +432,16 @@ void execute_collisions()
 				SDL_return = SDL_TryLockMutex(conditions[thread_counter].mutex);
 				if (SDL_return == 0) {
 					if (thread_collision_vars[thread_counter].collision != NULL) {
-						nprintf(("Multithread", "multithread: execution %d object pair %d - thread %d busy\n", executions, object_counter, thread_counter));
 						SDL_UnlockMutex(conditions[thread_counter].mutex);
 						thread_counter = (thread_counter + 1) % Cmdline_num_threads;
 						continue;
 					}
-					nprintf(("Multithread", "multithread: execution %d object pair %d assigned to thread %d\n", executions, object_counter, thread_counter));
 					thread_collision_vars[thread_counter].collision = &collision_cache[*collision_list_it];
 					thread_collision_vars[thread_counter].collision->processed = PROCESS_STATE_BUSY;
 					thread_collision_vars[thread_counter].collision->exec_data.result = COLLISION_RESULT_INVALID;
 
 					if (SDL_CondSignal(conditions[thread_counter].condition) < 0) {
-						Error(LOCATION, "supercollider conditionl var signal failed: %s\n", SDL_GetError());
+						Error(LOCATION, "supercollider conditional var signal failed: %s\n", SDL_GetError());
 					}
 					SDL_return = SDL_UnlockMutex(conditions[thread_counter].mutex);
 					if (SDL_UnlockMutex(conditions[thread_counter].mutex) < 0) {
@@ -461,11 +463,6 @@ void execute_collisions()
 			for (collision_list_it = collision_list.begin(); collision_list_it != collision_list.end(); collision_list_it++) {
 				if (collision_cache[*collision_list_it].processed < PROCESS_STATE_COLLIDED) {
 					done = false;
-				} else if (collision_cache[*collision_list_it].processed == PROCESS_STATE_COLLIDED) {
-					if (collision_cache[*collision_list_it].exec_data.result == COLLISION_RESULT_COLLISION) {
-						collision_cache[*collision_list_it].exec_func(&(collision_cache[*collision_list_it].objs), &(collision_cache[*collision_list_it].exec_data));
-					}
-					collision_cache[*collision_list_it].processed = PROCESS_STATE_EXECUTED;
 				}
 			}
 			if (done == true) {
@@ -473,7 +470,6 @@ void execute_collisions()
 			}
 		}
 	}
-	nprintf(("Multithread", "multithread: execution %d - %d collision pairs, %d threads used - record is %d threads used\n", executions, collision_list.size()));
 
 	//make sure all the threads are done executing
 	for (i = 0; i < Cmdline_num_threads; i++) {
@@ -484,7 +480,40 @@ void execute_collisions()
 			Error(LOCATION, "supercollider mutex unlock failed: %s\n", SDL_GetError());
 		}
 	}
-	executions++;
+}
+
+void execute_collisions()
+{
+	int temp_check_time = -1;
+	SCP_vector<unsigned int>::iterator collision_list_it;
+
+	OPENGL_LOCK
+	if (!G3_count) {
+		g3_start_frame(1);
+	}
+
+	for (collision_list_it = collision_list.begin(); collision_list_it != collision_list.end(); collision_list_it++) {
+//		mprintf(("*collision_list_it = %d, ctype = %X, sig A = %d, sig B = %d\n", *collision_list_it, COLLISION_OF(collision_cache[*collision_list_it].objs.a->type, collision_cache[*collision_list_it].objs.b->type), collision_cache[*collision_list_it].objs.a->signature, collision_cache[*collision_list_it].objs.b->signature));
+		Assert(collision_cache[*collision_list_it].processed == PROCESS_STATE_COLLIDED);
+		//we didn't evaluate earlier, assume fallback
+		if (collision_cache[*collision_list_it].exec_data.result == COLLISION_RESULT_UNEVALUATED) {
+			temp_check_time = collision_cache[*collision_list_it].objs.next_check_time;
+			Assert(collision_cache[*collision_list_it].objs.check_collision);
+			if (collision_cache[*collision_list_it].objs.check_collision(&collision_cache[*collision_list_it].objs)) {
+				// don't have to check ever again
+				collision_cache[*collision_list_it].objs.next_check_time = -1;
+			} else {
+				collision_cache[*collision_list_it].objs.next_check_time = temp_check_time;
+			}
+		}
+		else {
+			if ((collision_cache[*collision_list_it].exec_func) && (collision_cache[*collision_list_it].exec_data.result == COLLISION_RESULT_COLLISION)) {
+				collision_cache[*collision_list_it].exec_func(&(collision_cache[*collision_list_it].objs), &(collision_cache[*collision_list_it].exec_data));
+			}
+		}
+		collision_cache[*collision_list_it].processed = PROCESS_STATE_EXECUTED;
+	}
+
 	g3_end_frame();
 	OPENGL_UNLOCK
 }
@@ -493,8 +522,6 @@ int supercollider_thread(void *num)
 {
 	int thread_num = *(int *) num;
 
-	nprintf(("Multithread", "multithread: supercollider_thread %d started\n", thread_num));
-
 	if (SDL_LockMutex(conditions[thread_num].mutex) < 0) {
 		Error(LOCATION, "supercollider mutex lock failed: %s\n", SDL_GetError());
 	}
@@ -502,14 +529,13 @@ int supercollider_thread(void *num)
 		if (SDL_CondWait(conditions[thread_num].condition, conditions[thread_num].mutex) < 0) {
 			Error(LOCATION, "supercollider conditional wait failed: %s\n", SDL_GetError());
 		}
-		if ((threads_alive == false) || (thread_collision_vars[thread_num].collision == NULL)) {
+		if (threads_alive == false) {
 			//check for exit condition
 			return 0;
 		}
 
 		thread_collision_vars[thread_num].collision->exec_data.result = thread_collision_vars[thread_num].collision->eval_func(&(thread_collision_vars[thread_num].collision->objs), &(thread_collision_vars[thread_num].collision->exec_data));
 
-		nprintf(("Multithread", "multithread: thread %d done\n", thread_num));
 		thread_collision_vars[thread_num].collision->processed = PROCESS_STATE_COLLIDED;
 		thread_collision_vars[thread_num].collision = NULL;
 	}

@@ -11,8 +11,6 @@
 #define MULTITHREADING_ENABLED
 #define MAX_THREADS											256
 
-#define SAFETY_TIME											2
-
 #define THREAD_WAIT											-1
 #define THREAD_EXIT											-2
 
@@ -23,6 +21,10 @@
 #define G3_COUNT_UNLOCK										{SDL_UnlockMutex(g3_count_mutex);}
 #define HOOK_LOCK											{SDL_LockMutex(hook_mutex);}
 #define HOOK_UNLOCK											{SDL_UnlockMutex(hook_mutex);}
+#define BEAM_LOCK											{SDL_LockMutex(beam_mutex);}
+#define BEAM_UNLOCK											{SDL_UnlockMutex(beam_mutex);}
+#define SHIP_LOCK											{SDL_LockMutex(ship_mutex);}
+#define SHIP_UNLOCK											{SDL_UnlockMutex(ship_mutex);}
 #else
 #define OPENGL_LOCK
 #define OPENGL_UNLOCK
@@ -30,12 +32,15 @@
 #define G3_COUNT_UNLOCK
 #define HOOK_LOCK
 #define HOOK_UNLOCK
+#define BEAM_LOCK
+#define BEAM_UNLOCK
+#define SHIP_LOCK
+#define SHIP_UNLOCK
 #endif
-
-#define DUMMY_CHECK_TIME									-2
 
 typedef enum
 {
+	COLLISION_RESULT_UNEVALUATED = -2,
 	COLLISION_RESULT_NEVER = -1,
 	COLLISION_RESULT_COLLISION = 0,
 	COLLISION_RESULT_NO_COLLISION,
@@ -120,6 +125,7 @@ typedef struct
 	int signature_a;
 	int signature_b;
 	unsigned char processed;
+	bool in_use;
 	collision_eval_func eval_func;
 	collision_exec_data exec_data;
 	collision_exec_func exec_func;
@@ -137,11 +143,15 @@ typedef struct
 extern SDL_mutex *render_mutex;
 extern SDL_mutex *g3_count_mutex;
 extern SDL_mutex *hook_mutex;
+extern SDL_mutex *beam_mutex;
+extern SDL_mutex *ship_mutex;
 extern bool threads_alive;
+extern SCP_hash_map<unsigned int, collision_data> collision_cache;
 
 void create_threads();
 void destroy_threads();
 
+void evaluate_collisions();
 void execute_collisions();
 
 /**

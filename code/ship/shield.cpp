@@ -774,6 +774,7 @@ MONITOR(NumShieldHits)
  */
 void add_shield_point(int objnum, int tri_num, vec3d *hit_pos)
 {
+	SHIP_LOCK
 	if (Num_shield_points >= MAX_SHIELD_POINTS)
 		return;
 
@@ -788,6 +789,7 @@ void add_shield_point(int objnum, int tri_num, vec3d *hit_pos)
 	Num_shield_points++;
 
 	Ships[Objects[objnum].instance].shield_hits++;
+	SHIP_UNLOCK
 }
 
 // ugh!  I wrote a special routine to store shield points for clients in multiplayer
@@ -814,6 +816,7 @@ void shield_point_multi_setup()
 {
 	int i;
 
+	SHIP_LOCK
 	Assert( MULTIPLAYER_CLIENT );
 
 	if ( Num_multi_shield_points == 0 )
@@ -825,6 +828,7 @@ void shield_point_multi_setup()
 	}
 
 	Num_multi_shield_points = 0;
+	SHIP_UNLOCK
 }
 
 

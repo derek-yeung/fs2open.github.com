@@ -196,6 +196,7 @@ void multi_spew_pxo_checksums(int max_files, char *outfile);
 void fs2netd_spew_table_checksums(char *outfile);
 
 extern bool frame_rate_display;
+extern int Cmdline_num_threads;
 
 bool Env_cubemap_drawn = false;
 
@@ -1721,9 +1722,9 @@ void game_init()
 	outwnd_init(1);
 #endif
 
-#ifdef MULTITHREADING_ENABLED
-	create_threads();
-#endif
+	if (Cmdline_num_threads > 1) {
+		create_threads();
+	}
 
 	// init os stuff next
 	if ( !Is_standalone ) {		
@@ -7087,9 +7088,9 @@ void game_shutdown(void)
 {
 	gTirDll_TrackIR.Close( );
 
-#ifdef MULTITHREADING_ENABLED
-	destroy_threads();
-#endif
+	if (Cmdline_num_threads > 1) {
+		destroy_threads();
+	}
 
 	fsspeech_deinit();
 #ifdef FS2_VOICER
@@ -7132,12 +7133,7 @@ void game_shutdown(void)
 	multi_lag_close();
 #endif
 	fs2netd_close();
-
-	if ( Cmdline_old_collision_sys ) {
-		obj_pairs_close();		// free memory from object collision pairs
-	} else {
-		obj_reset_colliders();
-	}
+	obj_reset_colliders();
 	stars_close();			// clean out anything used by stars code
 
 	// the menu close functions will unload the bitmaps if they were displayed during the game

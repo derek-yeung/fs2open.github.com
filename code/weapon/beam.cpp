@@ -1955,11 +1955,7 @@ void beam_get_binfo(beam *b, float accuracy, int num_shots)
 			vm_vec_zero(&b->binfo.dir_b);
 		} else {
 			// get random model points, this is useful for big ships, because we never miss when shooting at them
-			if ( Cmdline_old_collision_sys ) {
-				submodel_get_two_random_points(model_num, 0, &b->binfo.dir_a, &b->binfo.dir_b);
-			} else {
-				submodel_get_two_random_points_better(model_num, 0, &b->binfo.dir_a, &b->binfo.dir_b);
-			}
+			submodel_get_two_random_points_better(model_num, 0, &b->binfo.dir_a, &b->binfo.dir_b);
 		}
 		break;
 
@@ -2809,6 +2805,8 @@ void beam_add_collision(beam *b, object *hit_object, mc_info *cinfo, int quadran
 	// let the hud shield gauge know when Player or Player target is hit
 	if (quadrant_num >= 0)
 		hud_shield_quadrant_hit(hit_object, quadrant_num);
+
+	mprintf(("beam_add_collision - %X - %d - %d\n", hit_object, bc->c_objnum, hit_object->type));
 }
 
 // sort collisions for the frame
@@ -2854,6 +2852,8 @@ void beam_handle_collisions(beam *b)
 		int draw_effects = 1;
 		int first_hit = 1;
 		int target = b->f_collisions[idx].c_objnum;
+
+		mprintf(("beam check - %X - %d - %X - %d\n", &Objects[target], target, Objects + target, Objects[target].type));
 
 		// if we have an invalid object
 		if((target < 0) || (target >= MAX_OBJECTS)){
@@ -3106,6 +3106,8 @@ void beam_handle_collisions(beam *b)
 				}
 				break;
 			case OBJ_SHIP:	
+				mprintf(("beam damage\n"));
+
 				// hit the ship - again, the innards of this code handle multiplayer cases
 				// maybe vaporize ship.
 				//only apply damage if the collision is not an exit collision.  this prevents twice the damage from being done, although it probably be more realistic since two holes are being punched in the ship instead of one.
@@ -3468,29 +3470,29 @@ void beam_collide_ship_exec(obj_pair *pair, collision_exec_data *data)
 {
 	// add to the collision_list
 
-	Script_system.SetHookObjects(4, "Ship", pair->a, "Beam", pair->b, "Self",pair->a, "Object", pair->b);
-	bool ship_override = Script_system.IsConditionOverride(CHA_COLLIDEBEAM, pair->a);
-
-	Script_system.SetHookObjects(2, "Self",pair->b, "Object", pair->a);
-	bool weapon_override = Script_system.IsConditionOverride(CHA_COLLIDESHIP, pair->b);
-
-	if(!ship_override && !weapon_override) {
-		beam_add_collision(data->beam_ship.b, pair->a, &(data->beam_ship.mc_entry), data->beam_ship.quadrant_num);
-	}
+	Script_system.SetHookObjects(4, "Ship", pair->b, "Beam", pair->a, "Self",pair->b, "Object", pair->a);
+	bool ship_override = Script_system.IsConditionOverride(CHA_COLLIDEBEAM, pair->b);
 
 	Script_system.SetHookObjects(2, "Self",pair->a, "Object", pair->b);
-	if(!(weapon_override && !ship_override))
-		Script_system.RunCondition(CHA_COLLIDEBEAM, '\0', NULL, pair->a);
+	bool weapon_override = Script_system.IsConditionOverride(CHA_COLLIDESHIP, pair->a);
+
+	if(!ship_override && !weapon_override) {
+		beam_add_collision(data->beam_ship.b, pair->b, &(data->beam_ship.mc_entry), data->beam_ship.quadrant_num);
+	}
 
 	Script_system.SetHookObjects(2, "Self",pair->b, "Object", pair->a);
+	if(!(weapon_override && !ship_override))
+		Script_system.RunCondition(CHA_COLLIDEBEAM, '\0', NULL, pair->b);
+
+	Script_system.SetHookObjects(2, "Self",pair->a, "Object", pair->b);
 	if((weapon_override && !ship_override) || (!weapon_override && !ship_override))
-		Script_system.RunCondition(CHA_COLLIDESHIP, '\0', NULL, pair->b);
+		Script_system.RunCondition(CHA_COLLIDESHIP, '\0', NULL, pair->a);
 
 	Script_system.RemHookVars(4, "Ship", "Beam", "Self","Object");
 
 	// if we got "tooled", add an exit hole too
 	if (data->beam_ship.hull_exit_collision)
-		beam_add_collision(data->beam_ship.b, pair->a, &(data->beam_ship.mc_exit), data->beam_ship.quadrant_num, 1);
+		beam_add_collision(data->beam_ship.b, pair->b, &(data->beam_ship.mc_exit), data->beam_ship.quadrant_num, 1);
 }
 
 // collide a beam with a ship, returns 1 if we can ignore all future collisions between the 2 objects
