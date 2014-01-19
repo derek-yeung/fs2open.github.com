@@ -2778,6 +2778,7 @@ void beam_add_collision(beam *b, object *hit_object, mc_info *cinfo, int quadran
 	beam_collision *bc = NULL;
 	int idx;
 
+	BEAM_LOCK
 	// if we haven't reached the limit for beam collisions, just add it
 	if (b->f_collision_count < MAX_FRAME_COLLISIONS) {
 		bc = &b->f_collisions[b->f_collision_count++];
@@ -2806,7 +2807,7 @@ void beam_add_collision(beam *b, object *hit_object, mc_info *cinfo, int quadran
 	if (quadrant_num >= 0)
 		hud_shield_quadrant_hit(hit_object, quadrant_num);
 
-	mprintf(("beam_add_collision - %X - %d - %d\n", hit_object, bc->c_objnum, hit_object->type));
+	BEAM_UNLOCK
 }
 
 // sort collisions for the frame
@@ -2844,7 +2845,6 @@ void beam_handle_collisions(beam *b)
 
 	// the first thing we need to do is sort the collisions, from closest to farthest
 	qsort(b->f_collisions, b->f_collision_count, sizeof(beam_collision), beam_sort_collisions_func);
-
 	// now apply all collisions until we reach a ship which "stops" the beam or we reach the end of the list
 	for(idx=0; idx<b->f_collision_count; idx++){	
 		int model_num = -1;
@@ -2852,8 +2852,6 @@ void beam_handle_collisions(beam *b)
 		int draw_effects = 1;
 		int first_hit = 1;
 		int target = b->f_collisions[idx].c_objnum;
-
-		mprintf(("beam check - %X - %d - %X - %d\n", &Objects[target], target, Objects + target, Objects[target].type));
 
 		// if we have an invalid object
 		if((target < 0) || (target >= MAX_OBJECTS)){
@@ -3106,7 +3104,6 @@ void beam_handle_collisions(beam *b)
 				}
 				break;
 			case OBJ_SHIP:	
-				mprintf(("beam damage\n"));
 
 				// hit the ship - again, the innards of this code handle multiplayer cases
 				// maybe vaporize ship.
@@ -3131,7 +3128,6 @@ void beam_handle_collisions(beam *b)
 			// set last_shot so we know where to properly draw the beam		
 			b->last_shot = b->f_collisions[idx].cinfo.hit_point_world;
 			Assert(is_valid_vec(&b->last_shot));		
-
 			// done wif the beam
 			break;
 		}
@@ -3656,6 +3652,7 @@ collision_result beam_collide_ship_eval(obj_pair *pair, collision_exec_data *dat
 
 	// if we got a hit
 	if (valid_hit_occurred) {
+		mprintf(("valid_hit_occurred - %X - %d - %d - %d\n", pair->b, OBJ_INDEX(pair->b), pair->b->type, data->beam_ship.hull_exit_collision));
 		retval = COLLISION_RESULT_COLLISION;
 	}
 

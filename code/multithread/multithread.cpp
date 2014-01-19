@@ -57,12 +57,14 @@ bool threads_alive = false;
 
 typedef struct
 {
+	bool valid;
+	bool swap;
 	collision_eval_func eval_func;
 	collision_exec_func exec_func;
 	collision_fallback fallback_func;
 } collision_func_set;
 
-SCP_hash_map<unsigned int, collision_func_set> collision_func_list;
+collision_func_set collision_func_table[MAX_OBJECT_TYPES][MAX_OBJECT_TYPES];
 
 SCP_hash_map<unsigned int, collision_data> collision_cache;
 
@@ -82,16 +84,26 @@ int supercollider_thread(void *obj_collision_vars_ptr);
 //    }
 //}
 
-void collision_func_list_entry_set(unsigned int objtype1, unsigned int objtype2, collision_eval_func eval, collision_exec_func exec, collision_fallback fallback)
+void collision_func_table_entry_set(unsigned int objtype1, unsigned int objtype2, collision_eval_func eval, collision_exec_func exec, collision_fallback fallback)
 {
-	collision_func_list[COLLISION_OF(objtype1, objtype2)].eval_func = eval;
-	collision_func_list[COLLISION_OF(objtype1, objtype2)].exec_func = exec;
-	collision_func_list[COLLISION_OF(objtype1, objtype2)].fallback_func = fallback;
+	collision_func_table[objtype1][objtype2].eval_func = eval;
+	collision_func_table[objtype1][objtype2].exec_func = exec;
+	collision_func_table[objtype1][objtype2].fallback_func = fallback;
+	collision_func_table[objtype1][objtype2].swap = false;
+	collision_func_table[objtype1][objtype2].valid = true;
+
+	if(objtype1 != objtype2) {
+		collision_func_table[objtype2][objtype1].eval_func = eval;
+		collision_func_table[objtype2][objtype1].exec_func = exec;
+		collision_func_table[objtype2][objtype1].fallback_func = fallback;
+		collision_func_table[objtype2][objtype1].swap = true;
+		collision_func_table[objtype2][objtype1].valid = true;
+	}
 }
 
 void create_threads()
 {
-	int i;
+	int i, j;
 	thread_vars setup_vars;
 	char buffer[50];
 
@@ -156,23 +168,26 @@ void create_threads()
 	}
 
 	//populate functions for lookup table
-	collision_func_list.clear();
-	collision_func_list_entry_set(OBJ_SHIP, OBJ_WEAPON, collide_ship_weapon_eval, collide_ship_weapon_exec, collide_ship_weapon);
-//	collision_func_list_entry_set(OBJ_SHIP, OBJ_WEAPON, NULL, NULL, collide_ship_weapon);
+	for(i = 0; i < MAX_OBJECT_TYPES; i++) {
+		for(j = 0; j < MAX_OBJECT_TYPES; j++) {
+			collision_func_table[i][j].valid = false;
+		}
+	}
 
-	collision_func_list_entry_set(OBJ_DEBRIS, OBJ_WEAPON, NULL, NULL, collide_debris_weapon);
-	collision_func_list_entry_set(OBJ_DEBRIS, OBJ_SHIP, NULL, NULL, collide_debris_ship);
-	collision_func_list_entry_set(OBJ_ASTEROID, OBJ_WEAPON, NULL, NULL, collide_asteroid_weapon);
-	collision_func_list_entry_set(OBJ_ASTEROID, OBJ_SHIP, NULL, NULL, collide_asteroid_ship);
+	collision_func_table_entry_set(OBJ_SHIP, OBJ_SHIP, NULL, NULL, collide_ship_ship);
+	collision_func_table_entry_set(OBJ_SHIP, OBJ_WEAPON, collide_ship_weapon_eval, collide_ship_weapon_exec, collide_ship_weapon);
+//	collision_func_table_entry_set(OBJ_SHIP, OBJ_WEAPON, NULL, NULL, collide_ship_weapon);
 
-	collision_func_list_entry_set(OBJ_BEAM, OBJ_SHIP, beam_collide_ship_eval, beam_collide_ship_exec, beam_collide_ship);
-//	collision_func_list_entry_set(OBJ_BEAM, OBJ_SHIP, NULL, NULL, beam_collide_ship);
-
-	collision_func_list_entry_set(OBJ_BEAM, OBJ_ASTEROID, NULL, NULL, beam_collide_asteroid);
-	collision_func_list_entry_set(OBJ_BEAM, OBJ_DEBRIS, NULL, NULL, beam_collide_debris);
-	collision_func_list_entry_set(OBJ_BEAM, OBJ_WEAPON, NULL, NULL, beam_collide_missile);
-	collision_func_list_entry_set(OBJ_SHIP, OBJ_SHIP, NULL, NULL, collide_ship_ship);
-	collision_func_list_entry_set(OBJ_WEAPON, OBJ_WEAPON, NULL, NULL, collide_weapon_weapon);
+	collision_func_table_entry_set(OBJ_WEAPON, OBJ_WEAPON, NULL, NULL, collide_weapon_weapon);
+	collision_func_table_entry_set(OBJ_DEBRIS, OBJ_SHIP, NULL, NULL, collide_debris_ship);
+	collision_func_table_entry_set(OBJ_DEBRIS, OBJ_WEAPON, NULL, NULL, collide_debris_weapon);
+	collision_func_table_entry_set(OBJ_ASTEROID, OBJ_SHIP, NULL, NULL, collide_asteroid_ship);
+	collision_func_table_entry_set(OBJ_ASTEROID, OBJ_WEAPON, NULL, NULL, collide_asteroid_weapon);
+	collision_func_table_entry_set(OBJ_BEAM, OBJ_SHIP, beam_collide_ship_eval, beam_collide_ship_exec, beam_collide_ship);
+//	collision_func_table_entry_set(OBJ_BEAM, OBJ_SHIP, NULL, NULL, beam_collide_ship);
+	collision_func_table_entry_set(OBJ_BEAM, OBJ_WEAPON, NULL, NULL, beam_collide_missile);
+	collision_func_table_entry_set(OBJ_BEAM, OBJ_DEBRIS, NULL, NULL, beam_collide_debris);
+	collision_func_table_entry_set(OBJ_BEAM, OBJ_ASTEROID, NULL, NULL, beam_collide_asteroid);
 
 	collision_cache.clear();
 //	InitializePrefPath();
@@ -204,15 +219,16 @@ void collision_pair_clear()
 	collision_list.clear();
 }
 
+extern SCP_hash_map<uint, collider_pair> Collision_cached_pairs;
+
 void collision_pair_add(object *object_1, object *object_2)
 {
 	collision_data pair;
 	collision_data *data = NULL;
-	unsigned int ctype = 0;
 	unsigned int key = 0;
 	bool cache_hit = false;
+	collision_func_set *func_set;
 	SCP_hash_map<unsigned int, collision_data>::iterator collision_cache_it;
-	SCP_hash_map<unsigned int, collision_func_set>::iterator collision_func_it;
 
 	if ((object_1 == NULL) || (object_2 == NULL) ||
 	// Don't check collisions with yourself
@@ -226,77 +242,54 @@ void collision_pair_add(object *object_1, object *object_2)
 		return;
 	}
 
-	Assert(object_1->type < 127);
-	Assert(object_2->type < 127);
+	Assert(object_1->type < MAX_OBJECT_TYPES);
+	Assert(object_2->type < MAX_OBJECT_TYPES);
 
 	pair.objs.a = object_1;
 	pair.objs.b = object_2;
-	ctype = COLLISION_OF(object_1->type, object_2->type);
-	switch (ctype) {
-		case COLLISION_OF(OBJ_WEAPON, OBJ_SHIP):
-		case COLLISION_OF(OBJ_WEAPON, OBJ_DEBRIS):
-		case COLLISION_OF(OBJ_SHIP, OBJ_DEBRIS):
-		case COLLISION_OF(OBJ_WEAPON, OBJ_ASTEROID):
-		case COLLISION_OF(OBJ_SHIP, OBJ_ASTEROID):
-		case COLLISION_OF(OBJ_SHIP, OBJ_BEAM):
-		case COLLISION_OF(OBJ_ASTEROID, OBJ_BEAM):
-		case COLLISION_OF(OBJ_DEBRIS, OBJ_BEAM):
-		case COLLISION_OF(OBJ_WEAPON, OBJ_BEAM): {
-			// Swap them if needed
-			pair.objs.a = object_2;
-			pair.objs.b = object_1;
-			ctype = COLLISION_OF(object_2->type, object_1->type);
-			break;
-		}
+	func_set = &collision_func_table[object_1->type][object_2->type];
 
-		case COLLISION_OF(OBJ_WEAPON, OBJ_WEAPON): {
-			weapon_info *awip, *bwip;
-			awip = &Weapon_info[Weapons[object_1->instance].weapon_info_index];
-			bwip = &Weapon_info[Weapons[object_2->instance].weapon_info_index];
-
-			if ((awip->weapon_hitpoints > 0) || (bwip->weapon_hitpoints > 0)) {
-				if (bwip->weapon_hitpoints == 0) {
-					pair.objs.a = object_2;
-					pair.objs.b = object_1;
-					ctype = COLLISION_OF(object_2->type, object_1->type);
-				}
-			}
-			break;
-		}
-
-		default: {
-			//not a valid collision
-			return;
-			break;
-		}
-	}
-
-	collision_func_it = collision_func_list.find(ctype);
-
-	if (collision_func_it != collision_func_list.end()) {
-		//do a quick beam collision check
-		if (pair.objs.a->type == OBJ_BEAM) {
-			switch (pair.objs.b->type) {
-				case OBJ_SHIP:
-				case OBJ_ASTEROID:
-				case OBJ_DEBRIS:
-				case OBJ_WEAPON: {
-					if (beam_collide_early_out(pair.objs.a, pair.objs.b)) {
-						return;
-					}
-					break;
-				}
-				default:
-					Error(LOCATION, "Should never get here\n");
-			}
-		}
-		pair.objs.check_collision = collision_func_it->second.fallback_func;
-		pair.eval_func = collision_func_it->second.eval_func;
-		pair.exec_func = collision_func_it->second.exec_func;
-	} else {
-		//exit if not found in list
+	if (!func_set->valid)
+	{
 		return;
 	}
+
+	if((OBJ_WEAPON == object_1->type) && (OBJ_WEAPON == object_2->type)) {
+		weapon_info *awip, *bwip;
+		awip = &Weapon_info[Weapons[object_1->instance].weapon_info_index];
+		bwip = &Weapon_info[Weapons[object_2->instance].weapon_info_index];
+
+		if ((awip->weapon_hitpoints > 0) || (bwip->weapon_hitpoints > 0)) {
+			if (bwip->weapon_hitpoints == 0) {
+				pair.objs.a = object_2;
+				pair.objs.b = object_1;
+			}
+		}
+	}
+	else if (func_set->swap) {
+		pair.objs.a = object_2;
+		pair.objs.b = object_1;
+	}
+
+	if (pair.objs.a->type == OBJ_BEAM) {
+		switch (pair.objs.b->type) {
+			case OBJ_SHIP:
+			case OBJ_ASTEROID:
+			case OBJ_DEBRIS:
+			case OBJ_WEAPON: {
+				if (beam_collide_early_out(pair.objs.a, pair.objs.b)) {
+					return;
+				}
+				break;
+			}
+			default:
+				Error(LOCATION, "Should never get here\n");
+		}
+	}
+
+	pair.objs.check_collision = func_set->fallback_func;
+	pair.eval_func = func_set->eval_func;
+	pair.exec_func = func_set->exec_func;
 
 	key = (OBJ_INDEX(pair.objs.a) << 12) + OBJ_INDEX(pair.objs.b);
 	collision_cache_it = collision_cache.find(key);
@@ -403,7 +396,6 @@ void collision_pair_add(object *object_1, object *object_2)
 	}
 
 	collision_list.push_back(key);
-//	mprintf(("key = %d, ctype = %X, sig A = %d, sig B = %d\n", key, ctype, collision_cache[key].objs.a->signature, collision_cache[key].objs.b->signature));
 }
 
 void evaluate_collisions()
