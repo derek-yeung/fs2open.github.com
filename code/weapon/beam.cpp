@@ -86,14 +86,6 @@ int Beam_good_shot_octants[BEAM_NUM_GOOD_OCTANTS][4] = {
 // beam lighting effects
 int Beam_lighting = 1;
 
-// debug stuff - keep track of how many collision tests we perform a second and how many we toss a second
-#define BEAM_TEST_STAMP_TIME		4000	// every 4 seconds
-int Beam_test_stamp = -1;
-int Beam_test_ints = 0;
-int Beam_test_ship = 0;
-int Beam_test_ast = 0;
-int Beam_test_framecount = 0;
-
 // beam warmup completion %
 #define BEAM_WARMUP_PCT(b)			( ((float)Weapon_info[b->weapon_info_index].b_info.beam_warmup - (float)timestamp_until(b->warmup_stamp)) / (float)Weapon_info[b->weapon_info_index].b_info.beam_warmup ) 
 
@@ -1612,8 +1604,10 @@ void beam_add_light(beam *b, int objnum, int source, vec3d *c_point)
 {
 	beam_light_info *l;
 
+	BEAM_LOCK
 	// if we're out of light slots!
 	if(Beam_light_count >= MAX_BEAM_LIGHT_INFO){
+		BEAM_UNLOCK
 		return;
 	}
 
@@ -1632,6 +1626,7 @@ void beam_add_light(beam *b, int objnum, int source, vec3d *c_point)
 			Beam_light_count--;
 		}
 	}
+	BEAM_UNLOCK
 }
 
 // apply lighting from any beams
@@ -2244,11 +2239,6 @@ int beam_collide_ship(obj_pair *pair)
 		return 1;
 	}
 	
-#ifndef NDEBUG
-	Beam_test_ints++;
-	Beam_test_ship++;
-#endif
-
 	// get the ship
 	Assert(pair->b->instance >= 0);
 	Assert(pair->b->type == OBJ_SHIP);
@@ -2436,11 +2426,6 @@ int beam_collide_asteroid(obj_pair *pair)
 		return 1;
 	}	
 
-#ifndef NDEBUG
-	Beam_test_ints++;
-	Beam_test_ast++;
-#endif
-
 	// do the collision
 	mc_info_init(&test_collide);
 	test_collide.model_instance_num = -1;
@@ -2531,10 +2516,6 @@ int beam_collide_missile(obj_pair *pair)
 		return 1;
 	}
 
-#ifndef NDEBUG
-	Beam_test_ints++;
-#endif
-
 	// do the collision
 	mc_info_init(&test_collide);
 	test_collide.model_instance_num = -1;
@@ -2623,10 +2604,6 @@ int beam_collide_debris(obj_pair *pair)
 	if(model_num < 0){
 		return 1;
 	}	
-
-#ifndef NDEBUG
-	Beam_test_ints++;
-#endif
 
 	// do the collision
 	mc_info_init(&test_collide);
@@ -3539,11 +3516,6 @@ collision_result beam_collide_ship_eval(obj_pair *pair, collision_exec_data *dat
 	if (model_num < 0) {
 		return COLLISION_RESULT_NEVER;
 	}
-
-#ifndef NDEBUG
-	Beam_test_ints++;
-	Beam_test_ship++;
-#endif
 
 	// get the ship
 	Assert(pair->b->instance >= 0);

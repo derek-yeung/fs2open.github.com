@@ -7087,6 +7087,7 @@ void game_launch_launcher_on_exit()
 void game_shutdown(void)
 {
 	gTirDll_TrackIR.Close( );
+	profile_deinit();
 
 	if (Cmdline_num_threads > 1) {
 		destroy_threads();

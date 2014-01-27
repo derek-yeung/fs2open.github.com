@@ -174,20 +174,34 @@ void create_threads()
 		}
 	}
 
+//#define FALLBACK
+
+#ifdef FALLBACK
 	collision_func_table_entry_set(OBJ_SHIP, OBJ_SHIP, NULL, NULL, collide_ship_ship);
-	collision_func_table_entry_set(OBJ_SHIP, OBJ_WEAPON, collide_ship_weapon_eval, collide_ship_weapon_exec, collide_ship_weapon);
-//	collision_func_table_entry_set(OBJ_SHIP, OBJ_WEAPON, NULL, NULL, collide_ship_weapon);
+	collision_func_table_entry_set(OBJ_SHIP, OBJ_WEAPON, NULL, NULL, collide_ship_weapon);
 
 	collision_func_table_entry_set(OBJ_WEAPON, OBJ_WEAPON, NULL, NULL, collide_weapon_weapon);
 	collision_func_table_entry_set(OBJ_DEBRIS, OBJ_SHIP, NULL, NULL, collide_debris_ship);
 	collision_func_table_entry_set(OBJ_DEBRIS, OBJ_WEAPON, NULL, NULL, collide_debris_weapon);
 	collision_func_table_entry_set(OBJ_ASTEROID, OBJ_SHIP, NULL, NULL, collide_asteroid_ship);
 	collision_func_table_entry_set(OBJ_ASTEROID, OBJ_WEAPON, NULL, NULL, collide_asteroid_weapon);
-	collision_func_table_entry_set(OBJ_BEAM, OBJ_SHIP, beam_collide_ship_eval, beam_collide_ship_exec, beam_collide_ship);
-//	collision_func_table_entry_set(OBJ_BEAM, OBJ_SHIP, NULL, NULL, beam_collide_ship);
+	collision_func_table_entry_set(OBJ_BEAM, OBJ_SHIP, NULL, NULL, beam_collide_ship);
 	collision_func_table_entry_set(OBJ_BEAM, OBJ_WEAPON, NULL, NULL, beam_collide_missile);
 	collision_func_table_entry_set(OBJ_BEAM, OBJ_DEBRIS, NULL, NULL, beam_collide_debris);
 	collision_func_table_entry_set(OBJ_BEAM, OBJ_ASTEROID, NULL, NULL, beam_collide_asteroid);
+#else
+	collision_func_table_entry_set(OBJ_SHIP, OBJ_SHIP, NULL, NULL, collide_ship_ship);
+	collision_func_table_entry_set(OBJ_SHIP, OBJ_WEAPON, collide_ship_weapon_eval, collide_ship_weapon_exec, collide_ship_weapon);
+	collision_func_table_entry_set(OBJ_WEAPON, OBJ_WEAPON, NULL, NULL, collide_weapon_weapon);
+	collision_func_table_entry_set(OBJ_DEBRIS, OBJ_SHIP, NULL, NULL, collide_debris_ship);
+	collision_func_table_entry_set(OBJ_DEBRIS, OBJ_WEAPON, NULL, NULL, collide_debris_weapon);
+	collision_func_table_entry_set(OBJ_ASTEROID, OBJ_SHIP, NULL, NULL, collide_asteroid_ship);
+	collision_func_table_entry_set(OBJ_ASTEROID, OBJ_WEAPON, NULL, NULL, collide_asteroid_weapon);
+	collision_func_table_entry_set(OBJ_BEAM, OBJ_SHIP, beam_collide_ship_eval, beam_collide_ship_exec, beam_collide_ship);
+	collision_func_table_entry_set(OBJ_BEAM, OBJ_WEAPON, NULL, NULL, beam_collide_missile);
+	collision_func_table_entry_set(OBJ_BEAM, OBJ_DEBRIS, NULL, NULL, beam_collide_debris);
+	collision_func_table_entry_set(OBJ_BEAM, OBJ_ASTEROID, NULL, NULL, beam_collide_asteroid);
+#endif
 
 	collision_cache.clear();
 //	InitializePrefPath();
