@@ -107,11 +107,18 @@ typedef struct
 
 typedef struct
 {
+	beam *b;
+	mc_info test_collide;
+} beam_misc_exec;
+
+typedef struct
+{
 	collision_result result;
 	union
 	{
 		ship_weapon_exec ship_weapon;
 		beam_ship_exec beam_ship;
+		beam_misc_exec beam_misc;
 	};
 } collision_exec_data;
 
@@ -170,4 +177,8 @@ void collide_ship_weapon_exec(obj_pair * pair, collision_exec_data *data);
 collision_result beam_collide_ship_eval(obj_pair *pair, collision_exec_data *data);
 void beam_collide_ship_exec(obj_pair *pair, collision_exec_data *data);
 
+collision_result beam_collide_misc_eval(obj_pair *pair, collision_exec_data *data);
+void beam_collide_asteroid_exec(obj_pair *pair, collision_exec_data *data);
+void beam_collide_missile_exec(obj_pair *pair, collision_exec_data *data);
+void beam_collide_debris_exec(obj_pair *pair, collision_exec_data *data);
 #endif

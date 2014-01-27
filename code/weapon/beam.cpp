@@ -3624,13 +3624,164 @@ collision_result beam_collide_ship_eval(obj_pair *pair, collision_exec_data *dat
 
 	// if we got a hit
 	if (valid_hit_occurred) {
-		mprintf(("valid_hit_occurred - %X - %d - %d - %d\n", pair->b, OBJ_INDEX(pair->b), pair->b->type, data->beam_ship.hull_exit_collision));
 		retval = COLLISION_RESULT_COLLISION;
 	}
 
 	// add this guy to the lighting list
 	if(Use_GLSL < 2)
 		beam_add_light(data->beam_ship.b, OBJ_INDEX(pair->b), 1, NULL);
+
+	// reset timestamp to timeout immediately
+	pair->next_check_time = timestamp(0);
+
+	return retval;
+}
+
+void beam_collide_asteroid_exec(obj_pair *pair, collision_exec_data *data)
+{
+	// add to the collision list
+
+	Script_system.SetHookObjects(4, "Beam", pair->a, "Asteroid", pair->b, "Self",pair->a, "Object", pair->b);
+	bool weapon_override = Script_system.IsConditionOverride(CHA_COLLIDEASTEROID, pair->a);
+
+	Script_system.SetHookObjects(2, "Self",pair->b, "Object", pair->a);
+	bool asteroid_override = Script_system.IsConditionOverride(CHA_COLLIDEBEAM, pair->b);
+
+	if(!weapon_override && !asteroid_override)
+	{
+		beam_add_collision(data->beam_misc.b, pair->b, &(data->beam_misc.test_collide));
+	}
+
+	Script_system.SetHookObjects(2, "Self",pair->a, "Object", pair->b);
+	if(!(asteroid_override && !weapon_override))
+		Script_system.RunCondition(CHA_COLLIDEASTEROID, '\0', NULL, pair->a);
+
+	Script_system.SetHookObjects(2, "Self",pair->b, "Object", pair->a);
+	if((asteroid_override && !weapon_override) || (!asteroid_override && !weapon_override))
+		Script_system.RunCondition(CHA_COLLIDEBEAM, '\0', NULL, pair->b);
+
+	Script_system.RemHookVars(4, "Beam", "Asteroid", "Self","Object");
+}
+
+void beam_collide_missile_exec(obj_pair *pair, collision_exec_data *data)
+{
+	// add to the collision list
+
+	Script_system.SetHookObjects(4, "Beam", pair->a, "Weapon", pair->b, "Self",pair->a, "Object", pair->b);
+	bool a_override = Script_system.IsConditionOverride(CHA_COLLIDEWEAPON, pair->a);
+
+	//Should be reversed
+	Script_system.SetHookObjects(2, "Self",pair->b, "Object", pair->a);
+	bool b_override = Script_system.IsConditionOverride(CHA_COLLIDEBEAM, pair->b);
+
+	if(!a_override && !b_override){
+		beam_add_collision(data->beam_misc.b, pair->b, &data->beam_misc.test_collide);
+	}
+
+	if(!(b_override && !a_override))
+	{
+		Script_system.SetHookObjects(4, "Beam", pair->a, "Weapon", pair->b, "Self",pair->a, "Object", pair->b);
+		Script_system.RunCondition(CHA_COLLIDEWEAPON, '\0', NULL, pair->a);
+	}
+	if((b_override && !a_override) || (!b_override && !a_override))
+	{
+		//Should be reversed
+		Script_system.SetHookObjects(4, "Weapon", pair->b, "Beam", pair->a, "Self",pair->b, "Object", pair->a);
+		Script_system.RunCondition(CHA_COLLIDEBEAM, '\0', NULL, pair->b);
+	}
+
+	Script_system.RemHookVars(4, "Weapon", "Beam", "Self","Object");
+
+}
+
+void beam_collide_debris_exec(obj_pair *pair, collision_exec_data *data)
+{
+	// add to the collision list
+
+	Script_system.SetHookObjects(4, "Beam", pair->a, "Debris", pair->b, "Self", pair->a, "Object", pair->b);
+	bool weapon_override = Script_system.IsConditionOverride(CHA_COLLIDEDEBRIS, pair->a);
+
+	Script_system.SetHookObjects(2, "Self",pair->b, "Object",  pair->a);
+	bool debris_override = Script_system.IsConditionOverride(CHA_COLLIDEBEAM, pair->b);
+
+	if(!weapon_override && !debris_override)
+	{
+		// add to the collision list
+		beam_add_collision(data->beam_misc.b, pair->b, &data->beam_misc.test_collide);
+	}
+
+	Script_system.SetHookObjects(2, "Self", pair->a, "Object", pair->b);
+	if(!(debris_override && !weapon_override))
+		Script_system.RunCondition(CHA_COLLIDEDEBRIS, '\0', NULL, pair->a);
+
+	Script_system.SetHookObjects(2, "Self", pair->b, "Object", pair->a);
+	if((debris_override && !weapon_override) || (!debris_override && !weapon_override))
+		Script_system.RunCondition(CHA_COLLIDEBEAM, '\0', NULL, pair->b);
+
+	Script_system.RemHookVars(4, "Beam", "Debris", "Self","Object");
+
+}
+
+collision_result beam_collide_misc_eval(obj_pair *pair, collision_exec_data *data)
+{
+	collision_result retval = COLLISION_RESULT_NO_COLLISION;
+	int model_num;
+
+	// bogus
+	if(pair == NULL){
+		return COLLISION_RESULT_NEVER;
+	}
+
+	// get the beam
+	Assert(pair->a->instance >= 0);
+	Assert(pair->a->type == OBJ_BEAM);
+	Assert(Beams[pair->a->instance].objnum == OBJ_INDEX(pair->a));
+	data->beam_misc.b = &Beams[pair->a->instance];
+
+	// if the "warming up" timestamp has not expired
+	if((data->beam_misc.b->warmup_stamp != -1) || (data->beam_misc.b->warmdown_stamp != -1)){
+		return COLLISION_RESULT_NO_COLLISION;
+	}
+
+	// if the beam is on "safety", don't collide with anything
+	if(data->beam_misc.b->flags & BF_SAFETY){
+		return COLLISION_RESULT_NO_COLLISION;
+	}
+
+	// if the colliding object is the shooting object, return 1 so this is culled
+	if(pair->b == data->beam_misc.b->objp){
+		return COLLISION_RESULT_NEVER;
+	}
+
+	// try and get a model
+	model_num = beam_get_model(pair->b);
+	if(model_num < 0){
+		return COLLISION_RESULT_NEVER;
+	}
+
+	// do the collision
+	mc_info_init(&data->beam_misc.test_collide);
+	data->beam_misc.test_collide.model_instance_num = -1;
+	data->beam_misc.test_collide.model_num = model_num;
+	data->beam_misc.test_collide.submodel_num = -1;
+	data->beam_misc.test_collide.orient = &pair->b->orient;
+	data->beam_misc.test_collide.pos = &pair->b->pos;
+	data->beam_misc.test_collide.p0 = &data->beam_misc.b->last_start;
+	data->beam_misc.test_collide.p1 = &data->beam_misc.b->last_shot;
+	data->beam_misc.test_collide.flags = MC_CHECK_MODEL | MC_CHECK_RAY;
+	model_collide(&(data->beam_misc.test_collide));
+
+	// if we got a hit
+	if(data->beam_misc.test_collide.num_hits){
+
+		retval = COLLISION_RESULT_COLLISION;
+	}
+
+	if (pair->b->type != OBJ_WEAPON) {
+		// add this guy to the lighting list
+		if(Use_GLSL < 2)
+			beam_add_light(data->beam_misc.b, OBJ_INDEX(pair->b), 1, NULL);
+	}
 
 	// reset timestamp to timeout immediately
 	pair->next_check_time = timestamp(0);

@@ -198,9 +198,9 @@ void create_threads()
 	collision_func_table_entry_set(OBJ_ASTEROID, OBJ_SHIP, NULL, NULL, collide_asteroid_ship);
 	collision_func_table_entry_set(OBJ_ASTEROID, OBJ_WEAPON, NULL, NULL, collide_asteroid_weapon);
 	collision_func_table_entry_set(OBJ_BEAM, OBJ_SHIP, beam_collide_ship_eval, beam_collide_ship_exec, beam_collide_ship);
-	collision_func_table_entry_set(OBJ_BEAM, OBJ_WEAPON, NULL, NULL, beam_collide_missile);
-	collision_func_table_entry_set(OBJ_BEAM, OBJ_DEBRIS, NULL, NULL, beam_collide_debris);
-	collision_func_table_entry_set(OBJ_BEAM, OBJ_ASTEROID, NULL, NULL, beam_collide_asteroid);
+	collision_func_table_entry_set(OBJ_BEAM, OBJ_WEAPON, beam_collide_misc_eval, beam_collide_missile_exec, beam_collide_missile);
+	collision_func_table_entry_set(OBJ_BEAM, OBJ_DEBRIS, beam_collide_misc_eval, beam_collide_debris_exec, beam_collide_debris);
+	collision_func_table_entry_set(OBJ_BEAM, OBJ_ASTEROID, beam_collide_misc_eval, beam_collide_asteroid_exec, beam_collide_asteroid);
 #endif
 
 	collision_cache.clear();
