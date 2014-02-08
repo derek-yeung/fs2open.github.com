@@ -184,3 +184,162 @@ int collide_weapon_weapon( obj_pair * pair )
 	return 0;
 }
 
+void collide_weapon_weapon_exec(obj_pair * pair, collision_exec_data *data)
+{
+	Script_system.SetHookObjects(4, "Weapon", pair->a, "WeaponB", pair->b, "Self", pair->a, "Object", pair->b);
+	bool a_override = Script_system.IsConditionOverride(CHA_COLLIDEWEAPON, pair->a);
+
+	//Should be reversed
+	Script_system.SetHookObjects(4, "Weapon", pair->b, "WeaponB", pair->a, "Self", pair->b, "Object", pair->a);
+	bool b_override = Script_system.IsConditionOverride(CHA_COLLIDEWEAPON, pair->b);
+
+	if (!a_override && !b_override) {
+		float aDamage = data->weapon_weapon.wipA->damage;
+		if (data->weapon_weapon.wipB->armor_type_idx >= 0)
+			aDamage = Armor_types[data->weapon_weapon.wipB->armor_type_idx].GetDamage(aDamage, data->weapon_weapon.wipA->damage_type_idx, 1.0f);
+
+		float bDamage = data->weapon_weapon.wipB->damage;
+		if (data->weapon_weapon.wipA->armor_type_idx >= 0)
+			bDamage = Armor_types[data->weapon_weapon.wipA->armor_type_idx].GetDamage(bDamage, data->weapon_weapon.wipB->damage_type_idx, 1.0f);
+
+		if (data->weapon_weapon.wipA->weapon_hitpoints > 0) {
+			if (data->weapon_weapon.wipB->weapon_hitpoints > 0) {		//	Two bombs collide, detonate both.
+				if ((data->weapon_weapon.wipA->wi_flags & WIF_BOMB) && (data->weapon_weapon.wipB->wi_flags & WIF_BOMB)) {
+					Weapons[pair->a->instance].lifeleft = 0.01f;
+					Weapons[pair->b->instance].lifeleft = 0.01f;
+					Weapons[pair->a->instance].weapon_flags |= WF_DESTROYED_BY_WEAPON;
+					Weapons[pair->b->instance].weapon_flags |= WF_DESTROYED_BY_WEAPON;
+				} else {
+					pair->a->hull_strength -= bDamage;
+					pair->b->hull_strength -= aDamage;
+
+					// safety to make sure either of the weapons die - allow 'bulkier' to keep going
+					if ((pair->a->hull_strength > 0.0f) && (pair->b->hull_strength > 0.0f)) {
+						if (data->weapon_weapon.wipA->weapon_hitpoints > data->weapon_weapon.wipB->weapon_hitpoints) {
+							pair->b->hull_strength = -1.0f;
+						} else {
+							pair->a->hull_strength = -1.0f;
+						}
+					}
+
+					if (pair->a->hull_strength < 0.0f) {
+						Weapons[pair->a->instance].lifeleft = 0.01f;
+						Weapons[pair->a->instance].weapon_flags |= WF_DESTROYED_BY_WEAPON;
+					}
+					if (pair->b->hull_strength < 0.0f) {
+						Weapons[pair->b->instance].lifeleft = 0.01f;
+						Weapons[pair->b->instance].weapon_flags |= WF_DESTROYED_BY_WEAPON;
+					}
+				}
+			} else {
+				pair->a->hull_strength -= bDamage;
+				Weapons[pair->b->instance].lifeleft = 0.01f;
+				Weapons[pair->b->instance].weapon_flags |= WF_DESTROYED_BY_WEAPON;
+				if (pair->a->hull_strength < 0.0f) {
+					Weapons[pair->a->instance].lifeleft = 0.01f;
+					Weapons[pair->a->instance].weapon_flags |= WF_DESTROYED_BY_WEAPON;
+				}
+			}
+		} else if (data->weapon_weapon.wipB->weapon_hitpoints > 0) {
+			pair->b->hull_strength -= aDamage;
+			Weapons[pair->a->instance].lifeleft = 0.01f;
+			Weapons[pair->a->instance].weapon_flags |= WF_DESTROYED_BY_WEAPON;
+			if (pair->b->hull_strength < 0.0f) {
+				Weapons[pair->b->instance].lifeleft = 0.01f;
+				Weapons[pair->b->instance].weapon_flags |= WF_DESTROYED_BY_WEAPON;
+			}
+		}
+
+		// single player and multiplayer masters evaluate the scoring and kill stuff
+		if (!MULTIPLAYER_CLIENT) {
+
+			//Save damage for bomb so we can do scoring once it's destroyed. -Halleck
+			if (data->weapon_weapon.wipA->wi_flags & WIF_BOMB) {
+				scoring_add_damage_to_weapon(pair->a, pair->b, data->weapon_weapon.wipB->damage);
+				//Update stats. -Halleck
+				scoring_eval_hit(pair->a, pair->b, 0);
+			}
+			if (data->weapon_weapon.wipB->wi_flags & WIF_BOMB) {
+				scoring_add_damage_to_weapon(pair->b, pair->a, data->weapon_weapon.wipA->damage);
+				//Update stats. -Halleck
+				scoring_eval_hit(pair->b, pair->a, 0);
+			}
+		}
+	}
+
+	if (!(b_override && !a_override)) {
+		Script_system.SetHookObjects(4, "Weapon", pair->a, "WeaponB", pair->b, "Self", pair->a, "Object", pair->b);
+		Script_system.RunCondition(CHA_COLLIDEWEAPON, '\0', NULL, pair->a);
+	}
+	if ((b_override && !a_override) || (!b_override && !a_override)) {
+		//Should be reversed
+		Script_system.SetHookObjects(4, "Weapon", pair->b, "WeaponB", pair->a, "Self", pair->b, "Object", pair->a);
+		Script_system.RunCondition(CHA_COLLIDEWEAPON, '\0', NULL, pair->b);
+	}
+
+	Script_system.RemHookVars(4, "Weapon", "WeaponB", "Self", "ObjectB");
+}
+
+/**
+ * Checks weapon-weapon collisions.
+ * @param pair obj_pair pointer to the two objects. pair->a and pair->b are weapons.
+ * @return 1 if all future collisions between these can be ignored
+ */
+collision_result collide_weapon_weapon_eval(obj_pair *pair, collision_exec_data *data)
+{
+	float A_radius, B_radius;
+
+	Assert(pair->a->type == OBJ_WEAPON);
+	Assert(pair->b->type == OBJ_WEAPON);
+
+	//	Don't allow ship to shoot down its own missile.
+	if (pair->a->parent_sig == pair->b->parent_sig)
+		return COLLISION_RESULT_NEVER;
+
+	//	Only shoot down teammate's missile if not traveling in nearly same direction.
+	if (Weapons[pair->a->instance].team == Weapons[pair->b->instance].team)
+		if (vm_vec_dot(&pair->a->orient.vec.fvec, &pair->b->orient.vec.fvec) > 0.7f)
+			return COLLISION_RESULT_NEVER;
+
+	//	Ignore collisions involving a bomb if the bomb is not yet armed.
+	weapon *wpA, *wpB;
+
+	wpA = &Weapons[pair->a->instance];
+	wpB = &Weapons[pair->b->instance];
+	data->weapon_weapon.wipA = &Weapon_info[wpA->weapon_info_index];
+	data->weapon_weapon.wipB = &Weapon_info[wpB->weapon_info_index];
+
+	A_radius = pair->a->radius;
+	B_radius = pair->b->radius;
+
+	if (data->weapon_weapon.wipA->weapon_hitpoints > 0) {
+		if (!(data->weapon_weapon.wipA->wi_flags2 & WIF2_HARD_TARGET_BOMB)) {
+			A_radius *= 2;		// Makes bombs easier to hit
+		}
+
+		if (data->weapon_weapon.wipA->wi_flags & WIF_LOCKED_HOMING) {
+			if ((data->weapon_weapon.wipA->max_lifetime - wpA->lifeleft) < The_mission.ai_profile->delay_bomb_arm_timer[Game_skill_level])
+				return COLLISION_RESULT_NO_COLLISION;
+		} else if ((data->weapon_weapon.wipA->lifetime - wpA->lifeleft) < The_mission.ai_profile->delay_bomb_arm_timer[Game_skill_level])
+			return COLLISION_RESULT_NO_COLLISION;
+	}
+
+	if (data->weapon_weapon.wipB->weapon_hitpoints > 0) {
+		if (!(data->weapon_weapon.wipB->wi_flags2 & WIF2_HARD_TARGET_BOMB)) {
+			B_radius *= 2;		// Makes bombs easier to hit
+		}
+		if (data->weapon_weapon.wipB->wi_flags & WIF_LOCKED_HOMING) {
+			if ((data->weapon_weapon.wipB->max_lifetime - wpB->lifeleft) < The_mission.ai_profile->delay_bomb_arm_timer[Game_skill_level])
+				return COLLISION_RESULT_NO_COLLISION;
+		} else if ((data->weapon_weapon.wipB->lifetime - wpB->lifeleft) < The_mission.ai_profile->delay_bomb_arm_timer[Game_skill_level])
+			return COLLISION_RESULT_NO_COLLISION;
+	}
+
+	//	Rats, do collision detection.
+	if (collide_subdivide(&pair->a->last_pos, &pair->a->pos, A_radius, &pair->b->last_pos, &pair->b->pos, B_radius)) {
+
+		return COLLISION_RESULT_COLLISION;
+	}
+
+	return COLLISION_RESULT_NO_COLLISION;
+}

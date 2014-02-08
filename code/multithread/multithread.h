@@ -21,8 +21,10 @@
 #define G3_COUNT_UNLOCK										{SDL_UnlockMutex(g3_count_mutex);}
 #define HOOK_LOCK											{SDL_LockMutex(hook_mutex);}
 #define HOOK_UNLOCK											{SDL_UnlockMutex(hook_mutex);}
-#define BEAM_LOCK											{SDL_LockMutex(beam_mutex);}
-#define BEAM_UNLOCK											{SDL_UnlockMutex(beam_mutex);}
+#define BEAM_COLLISION_LOCK									{SDL_LockMutex(beam_collision_mutex);}
+#define BEAM_COLLISION_UNLOCK								{SDL_UnlockMutex(beam_collision_mutex);}
+#define BEAM_LIGHT_LOCK										{SDL_LockMutex(beam_light_mutex);}
+#define BEAM_LIGHT_UNLOCK									{SDL_UnlockMutex(beam_light_mutex);}
 #define SHIP_LOCK											{SDL_LockMutex(ship_mutex);}
 #define SHIP_UNLOCK											{SDL_UnlockMutex(ship_mutex);}
 #else
@@ -32,8 +34,10 @@
 #define G3_COUNT_UNLOCK
 #define HOOK_LOCK
 #define HOOK_UNLOCK
-#define BEAM_LOCK
-#define BEAM_UNLOCK
+#define BEAM_COLLISION_LOCK
+#define BEAM_COLLISION_UNLOCK
+#define BEAM_LIGHT_LOCK
+#define BEAM_LIGHT_UNLOCK
 #define SHIP_LOCK
 #define SHIP_UNLOCK
 #endif
@@ -89,6 +93,26 @@ public:
 	{}
 };
 
+// used for ship:ship and ship:debris
+typedef struct {
+	object	*heavy;
+	object	*light;
+	vec3d	heavy_collision_cm_pos;	// should be zero
+	vec3d	light_collision_cm_pos;	// relative cm collision pos
+	vec3d	r_heavy;						// relative to A
+	vec3d	r_light;						// relative to B
+	vec3d	hit_pos;					// relative hit position in A's rf (r_heavy)
+	vec3d	collision_normal;		// normal outward from heavy
+	float		hit_time;				// time normalized [0,1] when sphere hits model
+	float		impulse;					// damage scales according to impulse
+	vec3d	light_rel_vel;			// velocity of light relative to heavy before collison
+	int		collide_rotate;		// if collision is detected purely from rotation
+	int		submodel_num;			// submodel of heavy object that is hit
+	int		edge_hit;				// if edge is hit, need to change collision normal
+	int		submodel_rot_hit;		// if collision is against rotating submodel
+	bool	is_landing;			//SUSHI: Maybe treat current collision as a landing
+} collision_info_struct;
+
 typedef struct
 {
 	weapon *wp;
@@ -113,12 +137,33 @@ typedef struct
 
 typedef struct
 {
-	collision_result result;
+	bool player_involved;
+	bool planet_collision;
+	vec3d world_hit_pos;
+	collision_info_struct ship_ship_hit_info;
+} ship_ship_exec;
+
+typedef struct
+{
+	weapon_info *wipA, *wipB;
+} weapon_weapon_exec;
+
+typedef struct
+{
+	vec3d hitpos;
+	collision_info_struct misc_hit_info;
+} misc_exec;
+
+typedef struct
+{
 	union
 	{
 		ship_weapon_exec ship_weapon;
 		beam_ship_exec beam_ship;
 		beam_misc_exec beam_misc;
+		ship_ship_exec ship_ship;
+		weapon_weapon_exec weapon_weapon;
+		misc_exec misc;
 	};
 } collision_exec_data;
 
@@ -133,6 +178,7 @@ typedef struct
 	int signature_b;
 	unsigned char processed;
 	bool in_use;
+	collision_result result;
 	collision_eval_func eval_func;
 	collision_exec_data exec_data;
 	collision_exec_func exec_func;
@@ -150,7 +196,8 @@ typedef struct
 extern SDL_mutex *render_mutex;
 extern SDL_mutex *g3_count_mutex;
 extern SDL_mutex *hook_mutex;
-extern SDL_mutex *beam_mutex;
+extern SDL_mutex *beam_collision_mutex;
+extern SDL_mutex *beam_light_mutex;
 extern SDL_mutex *ship_mutex;
 extern bool threads_alive;
 extern SCP_hash_map<unsigned int, collision_data> collision_cache;
@@ -170,9 +217,30 @@ void collision_pair_add(object *object_1, object *object_2);
 
 void collision_pair_clear();
 
+void set_hit_struct_info(collision_info_struct *hit, mc_info *mc, int submodel_rot_hit);
+
+void init_collision_info_struct(collision_info_struct *cis);
+
+collision_result collide_ship_ship_eval(obj_pair * pair, collision_exec_data *data);
+void collide_ship_ship_exec(obj_pair * pair, collision_exec_data *data);
+
+collision_result collide_weapon_weapon_eval(obj_pair *pair, collision_exec_data *data);
+void collide_weapon_weapon_exec(obj_pair * pair, collision_exec_data *data);
 
 collision_result collide_ship_weapon_eval(obj_pair * pair, collision_exec_data *data);
 void collide_ship_weapon_exec(obj_pair * pair, collision_exec_data *data);
+
+collision_result collide_debris_ship_eval(obj_pair *pair, collision_exec_data *data);
+void collide_debris_ship_exec(obj_pair *pair, collision_exec_data *data);
+
+collision_result collide_asteroid_ship_eval(obj_pair *pair, collision_exec_data *data);
+void collide_asteroid_ship_exec(obj_pair *pair, collision_exec_data *data);
+
+collision_result collide_debris_weapon_eval(obj_pair *pair, collision_exec_data *data);
+void collide_debris_weapon_exec(obj_pair *pair, collision_exec_data *data);
+
+collision_result collide_asteroid_weapon_eval(obj_pair *pair, collision_exec_data *data);
+void collide_asteroid_weapon_exec(obj_pair *pair, collision_exec_data *data);
 
 collision_result beam_collide_ship_eval(obj_pair *pair, collision_exec_data *data);
 void beam_collide_ship_exec(obj_pair *pair, collision_exec_data *data);

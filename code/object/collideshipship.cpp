@@ -27,7 +27,7 @@
 #include "object/objectdock.h"
 #include "object/objectshield.h"
 #include "parse/scripting.h"
-
+#include "multithread/multithread.h"
 
 #define COLLIDE_DEBUG
 #undef  COLLIDE_DEBUG
@@ -1388,3 +1388,266 @@ void collect_ship_ship_physics_info(object *heavy, object *light, mc_info *mc_in
 #endif
 
 }	
+
+void collide_ship_ship_exec(obj_pair *pair, collision_exec_data *data)
+{
+	if(data->ship_ship.planet_collision == true) {
+		if (is_planet(pair->b)) {
+			mcp_1(pair->a, pair->b);
+			return;
+		}
+		else if (is_planet(pair->a)) {
+			mcp_1(pair->b, pair->a);
+			return;
+		}
+		return;		//if we're here, something went badly wrong
+	}
+	Script_system.SetHookObjects(4, "Ship", pair->a, "ShipB", pair->b, "Self", pair->a, "Object", pair->b);
+	bool a_override = Script_system.IsConditionOverride(CHA_COLLIDESHIP, pair->a);
+
+	//Yes this should be reversed.
+	Script_system.SetHookObjects(4, "Ship", pair->b, "ShipB", pair->a, "Self", pair->b, "Object", pair->a);
+	bool b_override = Script_system.IsConditionOverride(CHA_COLLIDESHIP, pair->b);
+	if (!a_override && !b_override) {
+		float damage;
+
+		if (data->ship_ship.player_involved && (Player->control_mode == PCM_WARPOUT_STAGE1)) {
+			gameseq_post_event(GS_EVENT_PLAYER_WARPOUT_STOP);
+			HUD_printf(XSTR("Warpout sequence aborted.", 466));
+		}
+
+		damage = 0.005f * data->ship_ship.ship_ship_hit_info.impulse;	//	Cut collision-based damage in half.
+		//	Decrease heavy damage by 2x.
+		if (damage > 5.0f) {
+			damage = 5.0f + (damage - 5.0f) / 2.0f;
+		}
+
+		do_kamikaze_crash(pair->a, pair->b);
+
+		if (data->ship_ship.ship_ship_hit_info.impulse > 0) {
+			//Only flash the "Collision" text if not landing
+			if (data->ship_ship.player_involved && !data->ship_ship.ship_ship_hit_info.is_landing) {
+				hud_start_text_flash(XSTR("Collision", 1431), 2000);
+			}
+		}
+
+		//If this is a landing, play a different sound
+		if (data->ship_ship.ship_ship_hit_info.is_landing) {
+			if (vm_vec_mag(&data->ship_ship.ship_ship_hit_info.light_rel_vel) > MIN_LANDING_SOUND_VEL) {
+				ship_info *light_sip = &Ship_info[Ships[data->ship_ship.ship_ship_hit_info.light->instance].ship_info_index];
+				if (data->ship_ship.player_involved) {
+					if (!snd_is_playing(Player_collide_sound)) {
+						Player_collide_sound = snd_play_3d(&Snds[light_sip->collision_physics.landing_sound_idx], &data->ship_ship.world_hit_pos, &View_position);
+					}
+				} else {
+					if (!snd_is_playing(AI_collide_sound)) {
+						AI_collide_sound = snd_play_3d(&Snds[light_sip->collision_physics.landing_sound_idx], &data->ship_ship.world_hit_pos, &View_position);
+					}
+				}
+			}
+		} else {
+			collide_ship_ship_do_sound(&data->ship_ship.world_hit_pos, pair->a, pair->b, data->ship_ship.player_involved);
+		}
+
+		// check if we should do force feedback stuff
+		if (data->ship_ship.player_involved && (data->ship_ship.ship_ship_hit_info.impulse > 0)) {
+			float scaler;
+			vec3d v;
+
+			scaler = -data->ship_ship.ship_ship_hit_info.impulse / Player_obj->phys_info.mass * 300;
+			vm_vec_copy_normalize(&v, &data->ship_ship.world_hit_pos);
+			joy_ff_play_vector_effect(&v, scaler);
+		}
+
+#ifndef NDEBUG
+		if ( !Collide_friendly ) {
+			if ( Ships[pair->a->instance].team == Ships[pair->b->instance].team ) {
+				vec3d collision_vec, right_angle_vec;
+				vm_vec_normalized_dir(&collision_vec, &data->ship_ship.ship_ship_hit_info.hit_pos, &pair->a->pos);
+				if (vm_vec_dot(&collision_vec, &pair->a->orient.vec.fvec) > 0.999f) {
+					right_angle_vec = pair->a->orient.vec.rvec;
+				} else {
+					vm_vec_cross(&right_angle_vec, &pair->a->orient.vec.uvec, &collision_vec);
+				}
+
+				vm_vec_scale_add2( &pair->a->phys_info.vel, &right_angle_vec, +2.0f);
+				vm_vec_scale_add2( &pair->b->phys_info.vel, &right_angle_vec, -2.0f);
+
+				return;
+			}
+		}
+#endif
+
+		//Only do damage if not a landing
+		if (!data->ship_ship.ship_ship_hit_info.is_landing) {
+			//	Scale damage based on skill level for player.
+			if ((data->ship_ship.ship_ship_hit_info.light->flags & OF_PLAYER_SHIP) || (data->ship_ship.ship_ship_hit_info.heavy->flags & OF_PLAYER_SHIP)) {
+				damage *= (float) (Game_skill_level * Game_skill_level + 1) / (NUM_SKILL_LEVELS + 1);
+			} else if (Ships[data->ship_ship.ship_ship_hit_info.light->instance].team == Ships[data->ship_ship.ship_ship_hit_info.heavy->instance].team) {
+				//	Decrease damage if non-player ships and not large.
+				//	Looks dumb when fighters are taking damage from bumping into each other.
+				if ((data->ship_ship.ship_ship_hit_info.light->radius < 50.0f) && (data->ship_ship.ship_ship_hit_info.heavy->radius < 50.0f)) {
+					damage /= 4.0f;
+				}
+			}
+
+			float dam2 = (100.0f * damage / data->ship_ship.ship_ship_hit_info.light->phys_info.mass);
+
+			int quadrant_num = get_ship_quadrant_from_global(&data->ship_ship.world_hit_pos, data->ship_ship.ship_ship_hit_info.heavy);
+			if ((data->ship_ship.ship_ship_hit_info.heavy->flags & OF_NO_SHIELDS) || !ship_is_shield_up(data->ship_ship.ship_ship_hit_info.heavy, quadrant_num)) {
+				quadrant_num = -1;
+			}
+
+			ship_apply_local_damage(data->ship_ship.ship_ship_hit_info.heavy, data->ship_ship.ship_ship_hit_info.light, &data->ship_ship.world_hit_pos, 100.0f * damage / data->ship_ship.ship_ship_hit_info.heavy->phys_info.mass, quadrant_num, CREATE_SPARKS, data->ship_ship.ship_ship_hit_info.submodel_num, &data->ship_ship.ship_ship_hit_info.collision_normal);
+			hud_shield_quadrant_hit(data->ship_ship.ship_ship_hit_info.heavy, quadrant_num);
+
+			// don't draw sparks (using sphere hitpos)
+			ship_apply_local_damage(data->ship_ship.ship_ship_hit_info.light, data->ship_ship.ship_ship_hit_info.heavy, &data->ship_ship.world_hit_pos, dam2, MISS_SHIELDS, NO_SPARKS, -1, &data->ship_ship.ship_ship_hit_info.collision_normal);
+			hud_shield_quadrant_hit(data->ship_ship.ship_ship_hit_info.light, quadrant_num);
+
+			maybe_push_little_ship_from_fast_big_ship(data->ship_ship.ship_ship_hit_info.heavy, data->ship_ship.ship_ship_hit_info.light, data->ship_ship.ship_ship_hit_info.impulse, &data->ship_ship.ship_ship_hit_info.collision_normal);
+		}
+	}
+
+	if (!(b_override && !a_override)) {
+		Script_system.SetHookObjects(4, "Ship", pair->a, "ShipB", pair->b, "Self", pair->a, "Object", pair->b);
+		Script_system.RunCondition(CHA_COLLIDESHIP, '\0', NULL, pair->a);
+	}
+	if ((b_override && !a_override) || (!b_override && !a_override)) {
+		//Yes this should be reversed.
+		Script_system.SetHookObjects(4, "Ship", pair->b, "ShipB", pair->a, "Self", pair->b, "Object", pair->a);
+		Script_system.RunCondition(CHA_COLLIDESHIP, '\0', NULL, pair->b);
+	}
+
+	Script_system.RemHookVars(4, "Ship", "ShipB", "Self", "Object");
+
+}
+
+/**
+ * Checks ship-ship collisions.
+ * @return 1 if all future collisions between these can be ignored because pair->a or pair->b aren't ships
+ * @return Otherwise always returns 0, since two ships can always collide unless one (1) dies or (2) warps out.
+ */
+collision_result collide_ship_ship_eval(obj_pair * pair, collision_exec_data *data)
+{
+	float dist;
+	ship_info	*sip1, *sip2;
+
+	Assert(pair->a->type == OBJ_SHIP);
+	Assert(pair->b->type == OBJ_SHIP);
+
+	if (reject_due_collision_groups(pair->a, pair->b))
+		return COLLISION_RESULT_NEVER;
+
+	// If the player is one of the two colliding ships, flag this... it is used in
+	// several places this function.
+	if (pair->a == Player_obj || pair->b == Player_obj) {
+		data->ship_ship.player_involved = 1;
+	} else {
+		data->ship_ship.player_involved = 0;
+	}
+
+	// Don't check collisions for warping out player if past stage 1.
+	if (data->ship_ship.player_involved && (Player->control_mode > PCM_WARPOUT_STAGE1)) {
+		return COLLISION_RESULT_NO_COLLISION;
+	}
+
+	dist = vm_vec_dist(&pair->a->pos, &pair->b->pos);
+
+	sip1 = &Ship_info[Ships[pair->a->instance].ship_info_index];
+	sip2 = &Ship_info[Ships[pair->b->instance].ship_info_index];
+	data->ship_ship.planet_collision = false;
+
+	//	If one of these is a planet, do special stuff.
+	if (sip1->flags & SIF_PLAYER_SHIP) {
+		if (is_planet(pair->b)) {
+			data->ship_ship.planet_collision = true;
+			return COLLISION_RESULT_COLLISION;
+		}
+	} else if (sip2->flags & SIF_PLAYER_SHIP) {
+		if (is_planet(pair->a)) {
+			data->ship_ship.planet_collision = true;
+			return COLLISION_RESULT_COLLISION;
+		}
+	}
+
+	if (dist < pair->a->radius + pair->b->radius) {
+		init_collision_info_struct(&data->ship_ship.ship_ship_hit_info);
+
+		// if two objects have the same mass, make the one with the larger pointer address the HeavyOne.
+		if ( fl_abs(pair->a->phys_info.mass - pair->b->phys_info.mass) < 1) {
+			if (pair->a > pair->b) {
+				data->ship_ship.ship_ship_hit_info.heavy = pair->a;
+				data->ship_ship.ship_ship_hit_info.light = pair->b;
+			} else {
+				data->ship_ship.ship_ship_hit_info.heavy = pair->b;
+				data->ship_ship.ship_ship_hit_info.light = pair->a;
+			}
+		} else {
+			if (pair->a->phys_info.mass > pair->b->phys_info.mass) {
+				data->ship_ship.ship_ship_hit_info.heavy = pair->a;
+				data->ship_ship.ship_ship_hit_info.light = pair->b;
+			} else {
+				data->ship_ship.ship_ship_hit_info.heavy = pair->b;
+				data->ship_ship.ship_ship_hit_info.light = pair->a;
+			}
+		}
+
+		pair->next_check_time = timestamp(0);
+
+		if (ship_ship_check_collision(&data->ship_ship.ship_ship_hit_info, &data->ship_ship.world_hit_pos)) {
+
+			return COLLISION_RESULT_COLLISION;
+		}
+	} else {
+		// estimate earliest time at which pair can hit
+
+		// cap ships warping in/out can exceed ship's expected velocity
+		// if ship is warping in, in stage 1, its velocity is 0, so make ship try to collide next frame
+		int sif_a_flags, sif_b_flags;
+		sif_a_flags = Ship_info[Ships[pair->a->instance].ship_info_index].flags;
+		sif_b_flags = Ship_info[Ships[pair->b->instance].ship_info_index].flags;
+
+		// if ship is huge and warping in or out
+		if (((Ships[pair->a->instance].flags & SF_ARRIVING_STAGE_1) && (sif_a_flags & (SIF_HUGE_SHIP))) || ((Ships[pair->b->instance].flags & SF_ARRIVING_STAGE_1) && (sif_b_flags & (SIF_HUGE_SHIP)))) {
+			pair->next_check_time = timestamp(0);	// check next time
+			return COLLISION_RESULT_NO_COLLISION;
+		}
+
+		// get max of (1) max_vel.z, (2) 10, (3) afterburner_max_vel.z, (4) vel.z (for warping in ships exceeding expected max vel)
+		float shipA_max_speed, shipB_max_speed, time;
+
+		// get shipA max speed
+		if (ship_is_beginning_warpout_speedup(pair->a)) {
+			shipA_max_speed = MAX(ship_get_max_speed(&Ships[pair->a->instance]), ship_get_warpout_speed(pair->a));
+		} else {
+			shipA_max_speed = ship_get_max_speed(&Ships[pair->a->instance]);
+		}
+
+		// Maybe warping in or finished warping in with excessive speed
+		shipA_max_speed = MAX(shipA_max_speed, vm_vec_mag(&pair->a->phys_info.vel));
+		shipA_max_speed = MAX(shipA_max_speed, 10.0f);
+
+		// get shipB max speed
+		if (ship_is_beginning_warpout_speedup(pair->b)) {
+			shipB_max_speed = MAX(ship_get_max_speed(&Ships[pair->b->instance]), ship_get_warpout_speed(pair->b));
+		} else {
+			shipB_max_speed = ship_get_max_speed(&Ships[pair->b->instance]);
+		}
+
+		// Maybe warping in or finished warping in with excessive speed
+		shipB_max_speed = MAX(shipB_max_speed, vm_vec_mag(&pair->b->phys_info.vel));
+		shipB_max_speed = MAX(shipB_max_speed, 10.0f);
+
+		time = 1000.0f * (dist - pair->a->radius - pair->b->radius) / (shipA_max_speed + shipB_max_speed);
+		time -= 200.0f;		// allow one frame slow frame at ~5 fps
+
+		if (time > 0) {
+			pair->next_check_time = timestamp(fl2i(time));
+		} else {
+			pair->next_check_time = timestamp(0);	// check next time
+		}
+	}
+
+	return COLLISION_RESULT_NO_COLLISION;
+}

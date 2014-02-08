@@ -20,26 +20,6 @@ class object;
 struct CFILE;
 struct mc_info;
 
-// used for ship:ship and ship:debris
-typedef struct collision_info_struct {
-	object	*heavy;
-	object	*light;
-	vec3d	heavy_collision_cm_pos;	// should be zero
-	vec3d	light_collision_cm_pos;	// relative cm collision pos
-	vec3d	r_heavy;						// relative to A
-	vec3d	r_light;						// relative to B
-	vec3d	hit_pos;					// relative hit position in A's rf (r_heavy)
-	vec3d	collision_normal;		// normal outward from heavy
-	float		hit_time;				// time normalized [0,1] when sphere hits model
-	float		impulse;					// damage scales according to impulse
-	vec3d	light_rel_vel;			// velocity of light relative to heavy before collison
-	int		collide_rotate;		// if collision is detected purely from rotation
-	int		submodel_num;			// submodel of heavy object that is hit
-	int		edge_hit;				// if edge is hit, need to change collision normal
-	int		submodel_rot_hit;		// if collision is against rotating submodel
-	bool	is_landing;			//SUSHI: Maybe treat current collision as a landing
-} collision_info_struct;
-
 //Collision physics constants
 #define COLLISION_FRICTION_FACTOR		0.0f	//Default value if not set in ships.tbl
 #define COLLISION_ROTATION_FACTOR		0.2f	//Default value if not set in ships.tbl
@@ -63,8 +43,6 @@ extern int collision_type;
 
 #define SUBMODEL_NO_ROT_HIT	0
 #define SUBMODEL_ROT_HIT		1
-
-void set_hit_struct_info(collision_info_struct *hit, mc_info *mc, int submodel_rot_hit);
 
 void obj_pairs_close();
 void obj_reset_pairs();
@@ -147,8 +125,6 @@ void collide_ship_ship_sounds_init();
 int get_ship_quadrant_from_global(vec3d *global_pos, object *objp);
 
 int reject_due_collision_groups(object *A, object *B);
-
-void init_collision_info_struct(collision_info_struct *cis);
 
 void obj_collide_pair(object *A, object *B);
 

@@ -44,7 +44,8 @@ SDL_cond *collision_master_condition = NULL;
 SDL_mutex *render_mutex = NULL;
 SDL_mutex *g3_count_mutex = NULL;
 SDL_mutex *hook_mutex = NULL;
-SDL_mutex *beam_mutex = NULL;
+SDL_mutex *beam_collision_mutex = NULL;
+SDL_mutex *beam_light_mutex = NULL;
 SDL_mutex *ship_mutex = NULL;
 
 SCP_vector<unsigned int> collision_list;
@@ -130,9 +131,13 @@ void create_threads()
 	if (hook_mutex == NULL) {
 		Error(LOCATION, "hook_mutex create failed: %s\n", SDL_GetError());
 	}
-	beam_mutex = SDL_CreateMutex();
-	if (beam_mutex == NULL) {
-		Error(LOCATION, "beam_mutex create failed: %s\n", SDL_GetError());
+	beam_collision_mutex = SDL_CreateMutex();
+	if (beam_collision_mutex == NULL) {
+		Error(LOCATION, "beam_collision_mutex create failed: %s\n", SDL_GetError());
+	}
+	beam_light_mutex = SDL_CreateMutex();
+	if (beam_light_mutex == NULL) {
+		Error(LOCATION, "beam_light_mutex create failed: %s\n", SDL_GetError());
 	}
 	ship_mutex = SDL_CreateMutex();
 	if (ship_mutex == NULL) {
@@ -190,13 +195,13 @@ void create_threads()
 	collision_func_table_entry_set(OBJ_BEAM, OBJ_DEBRIS, NULL, NULL, beam_collide_debris);
 	collision_func_table_entry_set(OBJ_BEAM, OBJ_ASTEROID, NULL, NULL, beam_collide_asteroid);
 #else
-	collision_func_table_entry_set(OBJ_SHIP, OBJ_SHIP, NULL, NULL, collide_ship_ship);
+	collision_func_table_entry_set(OBJ_SHIP, OBJ_SHIP, collide_ship_ship_eval, collide_ship_ship_exec, collide_ship_ship);
 	collision_func_table_entry_set(OBJ_SHIP, OBJ_WEAPON, collide_ship_weapon_eval, collide_ship_weapon_exec, collide_ship_weapon);
-	collision_func_table_entry_set(OBJ_WEAPON, OBJ_WEAPON, NULL, NULL, collide_weapon_weapon);
-	collision_func_table_entry_set(OBJ_DEBRIS, OBJ_SHIP, NULL, NULL, collide_debris_ship);
-	collision_func_table_entry_set(OBJ_DEBRIS, OBJ_WEAPON, NULL, NULL, collide_debris_weapon);
-	collision_func_table_entry_set(OBJ_ASTEROID, OBJ_SHIP, NULL, NULL, collide_asteroid_ship);
-	collision_func_table_entry_set(OBJ_ASTEROID, OBJ_WEAPON, NULL, NULL, collide_asteroid_weapon);
+	collision_func_table_entry_set(OBJ_WEAPON, OBJ_WEAPON, collide_weapon_weapon_eval, collide_weapon_weapon_exec, collide_weapon_weapon);
+	collision_func_table_entry_set(OBJ_DEBRIS, OBJ_SHIP, collide_debris_ship_eval, collide_debris_ship_exec, collide_debris_ship);
+	collision_func_table_entry_set(OBJ_DEBRIS, OBJ_WEAPON, collide_debris_weapon_eval, collide_debris_weapon_exec, collide_debris_weapon);
+	collision_func_table_entry_set(OBJ_ASTEROID, OBJ_SHIP, collide_asteroid_ship_eval, collide_asteroid_ship_exec, collide_asteroid_ship);
+	collision_func_table_entry_set(OBJ_ASTEROID, OBJ_WEAPON, collide_asteroid_weapon_eval, collide_asteroid_weapon_exec, collide_asteroid_weapon);
 	collision_func_table_entry_set(OBJ_BEAM, OBJ_SHIP, beam_collide_ship_eval, beam_collide_ship_exec, beam_collide_ship);
 	collision_func_table_entry_set(OBJ_BEAM, OBJ_WEAPON, beam_collide_misc_eval, beam_collide_missile_exec, beam_collide_missile);
 	collision_func_table_entry_set(OBJ_BEAM, OBJ_DEBRIS, beam_collide_misc_eval, beam_collide_debris_exec, beam_collide_debris);
@@ -261,7 +266,7 @@ void collision_pair_add(object *object_1, object *object_2)
 
 	pair.objs.a = object_1;
 	pair.objs.b = object_2;
-	func_set = &collision_func_table[object_1->type][object_2->type];
+	func_set = &collision_func_table[pair.objs.a->type][pair.objs.b->type];
 
 	if (!func_set->valid)
 	{
@@ -330,6 +335,12 @@ void collision_pair_add(object *object_1, object *object_2)
 			//check for correct pair
 			if ((data->signature_a == data->objs.a->signature) && (data->signature_b == data->objs.b->signature)) {
 				cache_hit = true;
+				//skip if we know there will never be a collision
+				//this causes erroneous skipping, commented out for now
+//				if(data->result == COLLISION_RESULT_NEVER)
+//				{
+//					return;
+//				}
 			} else {
 				data->objs.a = pair.objs.a;
 				data->objs.b = pair.objs.b;
@@ -343,7 +354,7 @@ void collision_pair_add(object *object_1, object *object_2)
 	data->objs.check_collision = pair.objs.check_collision;
 	data->eval_func = pair.eval_func;
 	data->exec_func = pair.exec_func;
-	data->exec_data.result = COLLISION_RESULT_UNEVALUATED;
+	data->result = COLLISION_RESULT_UNEVALUATED;
 
 	if (cache_hit && data->objs.a->type != OBJ_BEAM) {
 		// if this signature is valid, make the necessary checks to see if we need to collide check
@@ -444,7 +455,7 @@ void evaluate_collisions()
 					}
 					thread_collision_vars[thread_counter].collision = &collision_cache[*collision_list_it];
 					thread_collision_vars[thread_counter].collision->processed = PROCESS_STATE_BUSY;
-					thread_collision_vars[thread_counter].collision->exec_data.result = COLLISION_RESULT_INVALID;
+					thread_collision_vars[thread_counter].collision->result = COLLISION_RESULT_INVALID;
 
 					if (SDL_CondSignal(conditions[thread_counter].condition) < 0) {
 						Error(LOCATION, "supercollider conditional var signal failed: %s\n", SDL_GetError());
@@ -502,7 +513,7 @@ void execute_collisions()
 //		mprintf(("*collision_list_it = %d, ctype = %X, sig A = %d, sig B = %d\n", *collision_list_it, COLLISION_OF(collision_cache[*collision_list_it].objs.a->type, collision_cache[*collision_list_it].objs.b->type), collision_cache[*collision_list_it].objs.a->signature, collision_cache[*collision_list_it].objs.b->signature));
 		Assert(collision_cache[*collision_list_it].processed == PROCESS_STATE_COLLIDED);
 		//we didn't evaluate earlier, assume fallback
-		if (collision_cache[*collision_list_it].exec_data.result == COLLISION_RESULT_UNEVALUATED) {
+		if (collision_cache[*collision_list_it].result == COLLISION_RESULT_UNEVALUATED) {
 			temp_check_time = collision_cache[*collision_list_it].objs.next_check_time;
 			Assert(collision_cache[*collision_list_it].objs.check_collision);
 			if (collision_cache[*collision_list_it].objs.check_collision(&collision_cache[*collision_list_it].objs)) {
@@ -513,7 +524,7 @@ void execute_collisions()
 			}
 		}
 		else {
-			if ((collision_cache[*collision_list_it].exec_func) && (collision_cache[*collision_list_it].exec_data.result == COLLISION_RESULT_COLLISION)) {
+			if ((collision_cache[*collision_list_it].exec_func) && (collision_cache[*collision_list_it].result == COLLISION_RESULT_COLLISION)) {
 				collision_cache[*collision_list_it].exec_func(&(collision_cache[*collision_list_it].objs), &(collision_cache[*collision_list_it].exec_data));
 			}
 		}
@@ -540,7 +551,7 @@ int supercollider_thread(void *num)
 			return 0;
 		}
 
-		thread_collision_vars[thread_num].collision->exec_data.result = thread_collision_vars[thread_num].collision->eval_func(&(thread_collision_vars[thread_num].collision->objs), &(thread_collision_vars[thread_num].collision->exec_data));
+		thread_collision_vars[thread_num].collision->result = thread_collision_vars[thread_num].collision->eval_func(&(thread_collision_vars[thread_num].collision->objs), &(thread_collision_vars[thread_num].collision->exec_data));
 
 		thread_collision_vars[thread_num].collision->processed = PROCESS_STATE_COLLIDED;
 		thread_collision_vars[thread_num].collision = NULL;

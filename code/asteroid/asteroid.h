@@ -14,11 +14,10 @@
 
 #include "globalincs/pstypes.h"
 #include "globalincs/globals.h"		// for NAME_LENGTH
-
+#include "multithread/multithread.h"
 
 class object;
 class polymodel;
-struct collision_info_struct;
 
 #define	MAX_ASTEROIDS			512
 

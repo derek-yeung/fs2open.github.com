@@ -137,4 +137,85 @@ int collide_asteroid_weapon( obj_pair * pair )
 	}
 }				
 
+void collide_debris_weapon_exec(obj_pair *pair, collision_exec_data *data)
+{
+	if (!debris_check_collision(pair->a, pair->b, &data->misc.hitpos))
+		return;
 
+	Script_system.SetHookObjects(4, "Weapon", pair->b, "Debris", pair->a, "Self", pair->b, "Object", pair->a);
+	bool weapon_override = Script_system.IsConditionOverride(CHA_COLLIDEDEBRIS, pair->b);
+
+	Script_system.SetHookObjects(2, "Self", pair->a, "Object", pair->b);
+	bool debris_override = Script_system.IsConditionOverride(CHA_COLLIDEWEAPON, pair->a);
+
+	if (!weapon_override && !debris_override) {
+		weapon_hit(pair->b, pair->a, &data->misc.hitpos);
+		debris_hit(pair->a, pair->b, &data->misc.hitpos, Weapon_info[Weapons[pair->b->instance].weapon_info_index].damage);
+	}
+
+	Script_system.SetHookObjects(2, "Self", pair->b, "Object", pair->a);
+	if (!(debris_override && !weapon_override))
+		Script_system.RunCondition(CHA_COLLIDEDEBRIS, '\0', NULL, pair->b);
+
+	Script_system.SetHookObjects(2, "Self", pair->a, "Object", pair->b);
+	if ((debris_override && !weapon_override) || (!debris_override && !weapon_override))
+		Script_system.RunCondition(CHA_COLLIDEWEAPON, '\0', NULL, pair->a);
+
+	Script_system.RemHookVars(4, "Weapon", "Debris", "Self", "ObjectB");
+}
+
+collision_result collide_debris_weapon_eval(obj_pair *pair, collision_exec_data *data)
+{
+	Assert(pair->a->type == OBJ_DEBRIS);
+	Assert(pair->b->type == OBJ_WEAPON);
+
+	// first check the bounding spheres of the two objects.
+	if (fvi_segment_sphere(&data->misc.hitpos, &pair->b->last_pos, &pair->b->pos, &pair->a->pos, pair->a->radius)) {
+		return COLLISION_RESULT_COLLISION;
+	} else {
+		return (weapon_will_never_hit(pair->b, pair->a, pair)) ? COLLISION_RESULT_NEVER : COLLISION_RESULT_NO_COLLISION;
+	}
+}
+
+void collide_asteroid_weapon_exec(obj_pair *pair, collision_exec_data *data)
+{
+	if (!asteroid_check_collision(pair->a, pair->b, &data->misc.hitpos))
+		return;
+
+	Script_system.SetHookObjects(4, "Weapon", pair->b, "Asteroid", pair->a, "Self", pair->b, "Object", pair->a);
+
+	bool weapon_override = Script_system.IsConditionOverride(CHA_COLLIDEASTEROID, pair->b);
+	Script_system.SetHookObjects(2, "Self", pair->a, "Object", pair->b);
+	bool asteroid_override = Script_system.IsConditionOverride(CHA_COLLIDEWEAPON, pair->a);
+
+	if (!weapon_override && !asteroid_override) {
+		weapon_hit(pair->b, pair->a, &data->misc.hitpos);
+		asteroid_hit(pair->a, pair->b, &data->misc.hitpos, Weapon_info[Weapons[pair->b->instance].weapon_info_index].damage);
+	}
+
+	Script_system.SetHookObjects(2, "Self", pair->b, "Object", pair->a);
+	if (!(asteroid_override && !weapon_override))
+		Script_system.RunCondition(CHA_COLLIDEASTEROID, '\0', NULL, pair->b);
+
+	Script_system.SetHookObjects(2, "Self", pair->a, "Object", pair->b);
+	if ((asteroid_override && !weapon_override) || (!asteroid_override && !weapon_override))
+		Script_system.RunCondition(CHA_COLLIDEWEAPON, '\0', NULL, pair->a);
+
+	Script_system.RemHookVars(4, "Weapon", "Asteroid", "Self", "ObjectB");
+}
+
+collision_result collide_asteroid_weapon_eval(obj_pair *pair, collision_exec_data *data)
+{
+	if (!Asteroids_enabled)
+		return COLLISION_RESULT_NEVER;
+
+	Assert(pair->a->type == OBJ_ASTEROID);
+	Assert(pair->b->type == OBJ_WEAPON);
+
+	// first check the bounding spheres of the two objects.
+	if (fvi_segment_sphere(&data->misc.hitpos, &pair->b->last_pos, &pair->b->pos, &pair->a->pos, pair->a->radius)) {
+		return COLLISION_RESULT_COLLISION;
+	} else {
+		return (weapon_will_never_hit(pair->b, pair->a, pair)) ? COLLISION_RESULT_NEVER : COLLISION_RESULT_NO_COLLISION;
+	}
+}

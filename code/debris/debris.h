@@ -13,6 +13,7 @@
 #define _DEBRIS_H
 
 #include "globalincs/pstypes.h"
+#include "multithread/multithread.h"
 
 class object;
 struct CFILE;
@@ -57,8 +58,6 @@ typedef struct debris {
 extern	debris Debris[MAX_DEBRIS_PIECES];
 
 extern int Num_debris_pieces;
-
-struct collision_info_struct;
 
 void debris_init();
 void debris_render( object * obj );

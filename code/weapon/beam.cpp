@@ -1604,10 +1604,10 @@ void beam_add_light(beam *b, int objnum, int source, vec3d *c_point)
 {
 	beam_light_info *l;
 
-	BEAM_LOCK
+	BEAM_LIGHT_LOCK
 	// if we're out of light slots!
 	if(Beam_light_count >= MAX_BEAM_LIGHT_INFO){
-		BEAM_UNLOCK
+		BEAM_LIGHT_UNLOCK
 		return;
 	}
 
@@ -1626,7 +1626,7 @@ void beam_add_light(beam *b, int objnum, int source, vec3d *c_point)
 			Beam_light_count--;
 		}
 	}
-	BEAM_UNLOCK
+	BEAM_LIGHT_UNLOCK
 }
 
 // apply lighting from any beams
@@ -2755,7 +2755,7 @@ void beam_add_collision(beam *b, object *hit_object, mc_info *cinfo, int quadran
 	beam_collision *bc = NULL;
 	int idx;
 
-	BEAM_LOCK
+	BEAM_COLLISION_LOCK
 	// if we haven't reached the limit for beam collisions, just add it
 	if (b->f_collision_count < MAX_FRAME_COLLISIONS) {
 		bc = &b->f_collisions[b->f_collision_count++];
@@ -2784,7 +2784,7 @@ void beam_add_collision(beam *b, object *hit_object, mc_info *cinfo, int quadran
 	if (quadrant_num >= 0)
 		hud_shield_quadrant_hit(hit_object, quadrant_num);
 
-	BEAM_UNLOCK
+	BEAM_COLLISION_UNLOCK
 }
 
 // sort collisions for the frame
@@ -3443,25 +3443,25 @@ void beam_collide_ship_exec(obj_pair *pair, collision_exec_data *data)
 {
 	// add to the collision_list
 
-	Script_system.SetHookObjects(4, "Ship", pair->b, "Beam", pair->a, "Self",pair->b, "Object", pair->a);
+	Script_system.SetHookObjects(4, "Ship", pair->b, "Beam", pair->a, "Self", pair->b, "Object", pair->a);
 	bool ship_override = Script_system.IsConditionOverride(CHA_COLLIDEBEAM, pair->b);
 
-	Script_system.SetHookObjects(2, "Self",pair->a, "Object", pair->b);
+	Script_system.SetHookObjects(2, "Self", pair->a, "Object", pair->b);
 	bool weapon_override = Script_system.IsConditionOverride(CHA_COLLIDESHIP, pair->a);
 
-	if(!ship_override && !weapon_override) {
+	if (!ship_override && !weapon_override) {
 		beam_add_collision(data->beam_ship.b, pair->b, &(data->beam_ship.mc_entry), data->beam_ship.quadrant_num);
 	}
 
-	Script_system.SetHookObjects(2, "Self",pair->b, "Object", pair->a);
-	if(!(weapon_override && !ship_override))
+	Script_system.SetHookObjects(2, "Self", pair->b, "Object", pair->a);
+	if (!(weapon_override && !ship_override))
 		Script_system.RunCondition(CHA_COLLIDEBEAM, '\0', NULL, pair->b);
 
-	Script_system.SetHookObjects(2, "Self",pair->a, "Object", pair->b);
-	if((weapon_override && !ship_override) || (!weapon_override && !ship_override))
+	Script_system.SetHookObjects(2, "Self", pair->a, "Object", pair->b);
+	if ((weapon_override && !ship_override) || (!weapon_override && !ship_override))
 		Script_system.RunCondition(CHA_COLLIDESHIP, '\0', NULL, pair->a);
 
-	Script_system.RemHookVars(4, "Ship", "Beam", "Self","Object");
+	Script_system.RemHookVars(4, "Ship", "Beam", "Self", "Object");
 
 	// if we got "tooled", add an exit hole too
 	if (data->beam_ship.hull_exit_collision)
@@ -3492,8 +3492,10 @@ collision_result beam_collide_ship_eval(obj_pair *pair, collision_exec_data *dat
 
 	// Don't check collisions for warping out player if past stage 1.
 	if (Player->control_mode >= PCM_WARPOUT_STAGE1) {
-		if ( pair->a == Player_obj ) return COLLISION_RESULT_NO_COLLISION;
-		if ( pair->b == Player_obj ) return COLLISION_RESULT_NO_COLLISION;
+		if (pair->a == Player_obj)
+			return COLLISION_RESULT_NO_COLLISION;
+		if (pair->b == Player_obj)
+			return COLLISION_RESULT_NO_COLLISION;
 	}
 
 	// if the "warming up" timestamp has not expired
@@ -3525,7 +3527,7 @@ collision_result beam_collide_ship_eval(obj_pair *pair, collision_exec_data *dat
 		return COLLISION_RESULT_NEVER;
 	shipp = &Ships[pair->b->instance];
 
-	int	valid_hit_occurred = 0;
+	int valid_hit_occurred = 0;
 	sip = &Ship_info[shipp->ship_info_index];
 	bwi = &Weapon_info[data->beam_ship.b->weapon_info_index];
 
@@ -3533,7 +3535,6 @@ collision_result beam_collide_ship_eval(obj_pair *pair, collision_exec_data *dat
 
 	// get the widest portion of the beam
 	widest = beam_get_widest(data->beam_ship.b);
-
 
 	// Goober5000 - I tried to make collision code much saner... here begin the (major) changes
 	mc_info_init(&data->beam_ship.mc_entry);
@@ -3577,8 +3578,7 @@ collision_result beam_collide_ship_eval(obj_pair *pair, collision_exec_data *dat
 	// check shields for impact
 	// (tooled ships are probably not going to be maintaining a shield over their exit hole,
 	// therefore we need only check the entrance, just as with conventional weapons)
-	if (!(pair->b->flags & OF_NO_SHIELDS))
-	{
+	if (!(pair->b->flags & OF_NO_SHIELDS)) {
 		// pick out the shield quadrant
 		if (shield_collision)
 			data->beam_ship.quadrant_num = get_quadrant(&mc_shield.hit_point, pair->b);
@@ -3590,8 +3590,7 @@ collision_result beam_collide_ship_eval(obj_pair *pair, collision_exec_data *dat
 			data->beam_ship.quadrant_num = -1;
 
 		// see if we hit the shield
-		if (data->beam_ship.quadrant_num >= 0)
-		{
+		if (data->beam_ship.quadrant_num >= 0) {
 			// do the hit effect
 			if (shield_collision) {
 				if (mc_shield.shield_hit_tri != -1) {
@@ -3611,13 +3610,10 @@ collision_result beam_collide_ship_eval(obj_pair *pair, collision_exec_data *dat
 	}
 
 	// see which impact we use
-	if (shield_collision && valid_hit_occurred)
-	{
+	if (shield_collision && valid_hit_occurred) {
 		memcpy(&data->beam_ship.mc_entry, &mc_shield, sizeof(mc_info));
 		Assert(data->beam_ship.quadrant_num >= 0);
-	}
-	else if (hull_enter_collision)
-	{
+	} else if (hull_enter_collision) {
 		memcpy(&data->beam_ship.mc_entry, &mc_hull_enter, sizeof(mc_info));
 		valid_hit_occurred = 1;
 	}
@@ -3628,7 +3624,7 @@ collision_result beam_collide_ship_eval(obj_pair *pair, collision_exec_data *dat
 	}
 
 	// add this guy to the lighting list
-	if(Use_GLSL < 2)
+	if (Use_GLSL < 2)
 		beam_add_light(data->beam_ship.b, OBJ_INDEX(pair->b), 1, NULL);
 
 	// reset timestamp to timeout immediately
@@ -3641,56 +3637,53 @@ void beam_collide_asteroid_exec(obj_pair *pair, collision_exec_data *data)
 {
 	// add to the collision list
 
-	Script_system.SetHookObjects(4, "Beam", pair->a, "Asteroid", pair->b, "Self",pair->a, "Object", pair->b);
+	Script_system.SetHookObjects(4, "Beam", pair->a, "Asteroid", pair->b, "Self", pair->a, "Object", pair->b);
 	bool weapon_override = Script_system.IsConditionOverride(CHA_COLLIDEASTEROID, pair->a);
 
-	Script_system.SetHookObjects(2, "Self",pair->b, "Object", pair->a);
+	Script_system.SetHookObjects(2, "Self", pair->b, "Object", pair->a);
 	bool asteroid_override = Script_system.IsConditionOverride(CHA_COLLIDEBEAM, pair->b);
 
-	if(!weapon_override && !asteroid_override)
-	{
+	if (!weapon_override && !asteroid_override) {
 		beam_add_collision(data->beam_misc.b, pair->b, &(data->beam_misc.test_collide));
 	}
 
-	Script_system.SetHookObjects(2, "Self",pair->a, "Object", pair->b);
-	if(!(asteroid_override && !weapon_override))
+	Script_system.SetHookObjects(2, "Self", pair->a, "Object", pair->b);
+	if (!(asteroid_override && !weapon_override))
 		Script_system.RunCondition(CHA_COLLIDEASTEROID, '\0', NULL, pair->a);
 
-	Script_system.SetHookObjects(2, "Self",pair->b, "Object", pair->a);
-	if((asteroid_override && !weapon_override) || (!asteroid_override && !weapon_override))
+	Script_system.SetHookObjects(2, "Self", pair->b, "Object", pair->a);
+	if ((asteroid_override && !weapon_override) || (!asteroid_override && !weapon_override))
 		Script_system.RunCondition(CHA_COLLIDEBEAM, '\0', NULL, pair->b);
 
-	Script_system.RemHookVars(4, "Beam", "Asteroid", "Self","Object");
+	Script_system.RemHookVars(4, "Beam", "Asteroid", "Self", "Object");
 }
 
 void beam_collide_missile_exec(obj_pair *pair, collision_exec_data *data)
 {
 	// add to the collision list
 
-	Script_system.SetHookObjects(4, "Beam", pair->a, "Weapon", pair->b, "Self",pair->a, "Object", pair->b);
+	Script_system.SetHookObjects(4, "Beam", pair->a, "Weapon", pair->b, "Self", pair->a, "Object", pair->b);
 	bool a_override = Script_system.IsConditionOverride(CHA_COLLIDEWEAPON, pair->a);
 
 	//Should be reversed
-	Script_system.SetHookObjects(2, "Self",pair->b, "Object", pair->a);
+	Script_system.SetHookObjects(2, "Self", pair->b, "Object", pair->a);
 	bool b_override = Script_system.IsConditionOverride(CHA_COLLIDEBEAM, pair->b);
 
-	if(!a_override && !b_override){
+	if (!a_override && !b_override) {
 		beam_add_collision(data->beam_misc.b, pair->b, &data->beam_misc.test_collide);
 	}
 
-	if(!(b_override && !a_override))
-	{
-		Script_system.SetHookObjects(4, "Beam", pair->a, "Weapon", pair->b, "Self",pair->a, "Object", pair->b);
+	if (!(b_override && !a_override)) {
+		Script_system.SetHookObjects(4, "Beam", pair->a, "Weapon", pair->b, "Self", pair->a, "Object", pair->b);
 		Script_system.RunCondition(CHA_COLLIDEWEAPON, '\0', NULL, pair->a);
 	}
-	if((b_override && !a_override) || (!b_override && !a_override))
-	{
+	if ((b_override && !a_override) || (!b_override && !a_override)) {
 		//Should be reversed
-		Script_system.SetHookObjects(4, "Weapon", pair->b, "Beam", pair->a, "Self",pair->b, "Object", pair->a);
+		Script_system.SetHookObjects(4, "Weapon", pair->b, "Beam", pair->a, "Self", pair->b, "Object", pair->a);
 		Script_system.RunCondition(CHA_COLLIDEBEAM, '\0', NULL, pair->b);
 	}
 
-	Script_system.RemHookVars(4, "Weapon", "Beam", "Self","Object");
+	Script_system.RemHookVars(4, "Weapon", "Beam", "Self", "Object");
 
 }
 
@@ -3701,24 +3694,23 @@ void beam_collide_debris_exec(obj_pair *pair, collision_exec_data *data)
 	Script_system.SetHookObjects(4, "Beam", pair->a, "Debris", pair->b, "Self", pair->a, "Object", pair->b);
 	bool weapon_override = Script_system.IsConditionOverride(CHA_COLLIDEDEBRIS, pair->a);
 
-	Script_system.SetHookObjects(2, "Self",pair->b, "Object",  pair->a);
+	Script_system.SetHookObjects(2, "Self", pair->b, "Object", pair->a);
 	bool debris_override = Script_system.IsConditionOverride(CHA_COLLIDEBEAM, pair->b);
 
-	if(!weapon_override && !debris_override)
-	{
+	if (!weapon_override && !debris_override) {
 		// add to the collision list
 		beam_add_collision(data->beam_misc.b, pair->b, &data->beam_misc.test_collide);
 	}
 
 	Script_system.SetHookObjects(2, "Self", pair->a, "Object", pair->b);
-	if(!(debris_override && !weapon_override))
+	if (!(debris_override && !weapon_override))
 		Script_system.RunCondition(CHA_COLLIDEDEBRIS, '\0', NULL, pair->a);
 
 	Script_system.SetHookObjects(2, "Self", pair->b, "Object", pair->a);
-	if((debris_override && !weapon_override) || (!debris_override && !weapon_override))
+	if ((debris_override && !weapon_override) || (!debris_override && !weapon_override))
 		Script_system.RunCondition(CHA_COLLIDEBEAM, '\0', NULL, pair->b);
 
-	Script_system.RemHookVars(4, "Beam", "Debris", "Self","Object");
+	Script_system.RemHookVars(4, "Beam", "Debris", "Self", "Object");
 
 }
 
@@ -3728,7 +3720,7 @@ collision_result beam_collide_misc_eval(obj_pair *pair, collision_exec_data *dat
 	int model_num;
 
 	// bogus
-	if(pair == NULL){
+	if (pair == NULL) {
 		return COLLISION_RESULT_NEVER;
 	}
 
@@ -3739,23 +3731,23 @@ collision_result beam_collide_misc_eval(obj_pair *pair, collision_exec_data *dat
 	data->beam_misc.b = &Beams[pair->a->instance];
 
 	// if the "warming up" timestamp has not expired
-	if((data->beam_misc.b->warmup_stamp != -1) || (data->beam_misc.b->warmdown_stamp != -1)){
+	if ((data->beam_misc.b->warmup_stamp != -1) || (data->beam_misc.b->warmdown_stamp != -1)) {
 		return COLLISION_RESULT_NO_COLLISION;
 	}
 
 	// if the beam is on "safety", don't collide with anything
-	if(data->beam_misc.b->flags & BF_SAFETY){
+	if (data->beam_misc.b->flags & BF_SAFETY) {
 		return COLLISION_RESULT_NO_COLLISION;
 	}
 
 	// if the colliding object is the shooting object, return 1 so this is culled
-	if(pair->b == data->beam_misc.b->objp){
+	if (pair->b == data->beam_misc.b->objp) {
 		return COLLISION_RESULT_NEVER;
 	}
 
 	// try and get a model
 	model_num = beam_get_model(pair->b);
-	if(model_num < 0){
+	if (model_num < 0) {
 		return COLLISION_RESULT_NEVER;
 	}
 
@@ -3772,14 +3764,14 @@ collision_result beam_collide_misc_eval(obj_pair *pair, collision_exec_data *dat
 	model_collide(&(data->beam_misc.test_collide));
 
 	// if we got a hit
-	if(data->beam_misc.test_collide.num_hits){
+	if (data->beam_misc.test_collide.num_hits) {
 
 		retval = COLLISION_RESULT_COLLISION;
 	}
 
 	if (pair->b->type != OBJ_WEAPON) {
 		// add this guy to the lighting list
-		if(Use_GLSL < 2)
+		if (Use_GLSL < 2)
 			beam_add_light(data->beam_misc.b, OBJ_INDEX(pair->b), 1, NULL);
 	}
 

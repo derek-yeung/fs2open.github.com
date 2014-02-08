@@ -607,7 +607,40 @@ int collide_subdivide(vec3d *p0, vec3d *p1, float prad, vec3d *q0, vec3d *q1, fl
 		return 0;
 }
 
+//	See if two lines intersect by doing recursive subdivision.
+//	Bails out if larger distance traveled is less than sum of radii + 1.0f.
+int collide_subdivide_new(vec3d *a_prev_pos, vec3d *a_current_pos, float a_radius, vec3d *b_prev_pos, vec3d *b_current_pos, float b_radius)
+{
+	float	a_dist, b_dist, ab_dist;
 
+	a_dist = vm_vec_dist(a_prev_pos, a_current_pos);
+	b_dist = vm_vec_dist(b_prev_pos, b_current_pos);
+
+	ab_dist = vm_vec_dist(a_current_pos, b_current_pos);
+
+	//	See if their spheres intersect
+	if (ab_dist < a_dist + b_dist + a_radius + b_radius) {
+		if (ab_dist  < a_radius + b_radius)
+			return 1;
+		else if (vm_vec_dist(a_prev_pos, b_prev_pos) < a_radius + b_radius)
+			return 1;
+		else if (MAX(a_dist, b_dist) < a_radius + b_radius + 1.0f)
+			return 0;
+		else {
+			int	r1, r2 = 0;
+			vec3d	a_avg_pos, b_avg_pos;
+
+			vm_vec_avg(&a_avg_pos, a_prev_pos, a_current_pos);
+			vm_vec_avg(&b_avg_pos, b_prev_pos, b_current_pos);
+			r1 = collide_subdivide(a_prev_pos, &a_avg_pos, a_radius, b_prev_pos, &b_avg_pos, b_radius);
+			if (!r1)
+				r2 = collide_subdivide(&a_avg_pos, a_current_pos, a_radius, &b_avg_pos, b_current_pos, b_radius);
+
+			return r1 | r2;
+		}
+	} else
+		return 0;
+}
 
 //	Return true if object A is expected to collide with object B within time duration
 //	For purposes of this check, the first object moves from current location to predicted
