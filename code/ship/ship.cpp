@@ -11892,9 +11892,9 @@ int get_available_secondary_weapons(object *objp, int *outlist, int *outbanklist
 void wing_bash_ship_name(char *ship_name, const char *wing_name, int index)
 {
 	// if wing name has a hash symbol, create the ship name a particular way
-	// (but don't do this for names that have the hash as the last character)
+	// (but don't do this for names that have the hash as the first or last character)
 	const char *p = get_pointer_to_first_hash_symbol(wing_name);
-	if ((p != NULL) && (*(p+1) != '\0'))
+	if ((p != NULL) && (p != wing_name) && (*(p+1) != '\0'))
 	{
 		size_t len = (p - wing_name);
 		strncpy(ship_name, wing_name, len);
@@ -16718,32 +16718,29 @@ int ship_has_dock_bay(int shipnum)
 // get first ship in ship list with docking bay
 int ship_get_ship_with_dock_bay(int team)
 {
-	int ship_with_bay = -1;
-	ship_obj *so;
-
-	so = GET_FIRST(&Ship_obj_list);
-	while(so != END_OF_LIST(&Ship_obj_list))
+	for (ship_obj *so = GET_FIRST(&Ship_obj_list); so != END_OF_LIST(&Ship_obj_list); so = GET_NEXT(so))
 	{
-		if ( ship_has_dock_bay(Objects[so->objnum].instance) && (Ships[Objects[so->objnum].instance].team == team) )
-		{
-			ship_with_bay = Objects[so->objnum].instance;
+		Assert(so->objnum >= 0);
+		int shipnum = Objects[so->objnum].instance;
+		Assert(shipnum >= 0);
 
+		if ( ship_has_dock_bay(shipnum) && (Ships[shipnum].team == team) )
+		{
 			// make sure not dying or departing
-			if (Ships[ship_with_bay].flags & (SF_DYING | SF_DEPARTING))
-				ship_with_bay = -1;
+			if (Ships[shipnum].flags & (SF_DYING | SF_DEPARTING))
+				continue;
 
 			// also make sure that the bays are not all destroyed
-			if (ship_fighterbays_all_destroyed(&Ships[ship_with_bay]))
-				ship_with_bay = -1;
+			if (ship_fighterbays_all_destroyed(&Ships[shipnum]))
+				continue;
 
-			if (ship_with_bay >= 0)
-				break;
+			// this ship suits our purposes
+			return shipnum;
 		}
-		so = GET_NEXT(so);
 	}
 
-	// return whatever we got
-	return ship_with_bay;
+	// we didn't find anything
+	return -1;
 }
 
 // Goober5000 - check if all fighterbays on a ship have been destroyed

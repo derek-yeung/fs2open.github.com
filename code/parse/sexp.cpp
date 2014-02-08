@@ -14669,7 +14669,7 @@ void sexp_set_death_message(int n)
 	// but use an actual message if one exists
 	for (i=0; i<Num_messages; i++)
 	{
-		if (!stricmp(Messages[i].name, CTEXT(n)))
+		if (!stricmp(Messages[i].name, Player->death_message.c_str()))
 		{
 			Player->death_message = Messages[i].message;
 			break;
@@ -20705,7 +20705,7 @@ void sexp_show_subtitle_text(int node)
 	// but use an actual message if one exists
 	for (i=0; i<Num_messages; i++)
 	{
-		if (!stricmp(Messages[i].name, CTEXT(n)))
+		if (!stricmp(Messages[i].name, buffer))
 		{
 			buffer = Messages[i].message;
 			break;
@@ -31156,7 +31156,7 @@ sexp_help_struct Sexp_help[] = {
 		"\t3:\tx coordinate to be targeted\r\n"
 		"\t4:\ty coordinate to be targeted\r\n"
 		"\t5:\tz coordinate to be targeted\r\n"
-		"\t6:\tWhether to force the beam to fire (disregarding FOV and subsystem status) (optional)\r\n"
+		"\t6:\t(Optional Operator) Whether to force the beam to fire (disregarding FOV and subsystem status). Defaults to False\r\n"
 		"\t7:\tsecond x coordinate to be targeted (optional; only used for slash beams)\r\n"
 		"\t8:\tsecond y coordinate to be targeted (optional; only used for slash beams)\r\n"
 		"\t9:\tsecond z coordinate to be targeted (optional; only used for slash beams)\r\n" },
