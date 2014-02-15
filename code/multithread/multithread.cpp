@@ -209,6 +209,7 @@ void create_threads()
 #endif
 
 	collision_cache.clear();
+
 //	InitializePrefPath();
 }
 
@@ -247,7 +248,6 @@ void collision_pair_add(object *object_1, object *object_2)
 	unsigned int key = 0;
 	bool cache_hit = false;
 	collision_func_set *func_set;
-	SCP_hash_map<unsigned int, collision_data>::iterator collision_cache_it;
 
 	if ((object_1 == NULL) || (object_2 == NULL) ||
 	// Don't check collisions with yourself
@@ -311,45 +311,35 @@ void collision_pair_add(object *object_1, object *object_2)
 	pair.exec_func = func_set->exec_func;
 
 	key = (OBJ_INDEX(pair.objs.a) << 12) + OBJ_INDEX(pair.objs.b);
-	collision_cache_it = collision_cache.find(key);
 
-	if (collision_cache_it == collision_cache.end()) {
-		//collision not cached - create using []
-		data = &collision_cache[key];
+	data = &collision_cache[key];
+	if (data->in_use == false) {
 		data->objs.a = pair.objs.a;
 		data->objs.b = pair.objs.b;
 		data->signature_a = pair.objs.a->signature;
 		data->signature_b = pair.objs.b->signature;
-		data->objs.next_check_time = timestamp(0);
+		data->objs.next_check_time = 1;
 		data->in_use = true;
+		data->exec_data = NULL;
 	} else {
-		data = &collision_cache[key];
-		if(data->in_use == false) {
+		//check for correct pair
+		if ((data->signature_a == data->objs.a->signature) && (data->signature_b == data->objs.b->signature)) {
+			cache_hit = true;
+			//skip if we know there will never be a collision
+			//this causes erroneous skipping, commented out for now
+//			if(data->result == COLLISION_RESULT_NEVER)
+//			{
+//				return;
+//			}
+		} else {
 			data->objs.a = pair.objs.a;
 			data->objs.b = pair.objs.b;
 			data->signature_a = pair.objs.a->signature;
 			data->signature_b = pair.objs.b->signature;
-			data->objs.next_check_time = timestamp(0);
-			data->in_use = true;
-		} else {
-			//check for correct pair
-			if ((data->signature_a == data->objs.a->signature) && (data->signature_b == data->objs.b->signature)) {
-				cache_hit = true;
-				//skip if we know there will never be a collision
-				//this causes erroneous skipping, commented out for now
-//				if(data->result == COLLISION_RESULT_NEVER)
-//				{
-//					return;
-//				}
-			} else {
-				data->objs.a = pair.objs.a;
-				data->objs.b = pair.objs.b;
-				data->signature_a = pair.objs.a->signature;
-				data->signature_b = pair.objs.b->signature;
-				data->objs.next_check_time = timestamp(0);
-			}
+			data->objs.next_check_time = 1;
 		}
 	}
+
 	data->processed = PROCESS_STATE_UNPROCESSED;
 	data->objs.check_collision = pair.objs.check_collision;
 	data->eval_func = pair.eval_func;
@@ -524,8 +514,10 @@ void execute_collisions()
 			}
 		}
 		else {
-			if ((collision_cache[*collision_list_it].exec_func) && (collision_cache[*collision_list_it].result == COLLISION_RESULT_COLLISION)) {
-				collision_cache[*collision_list_it].exec_func(&(collision_cache[*collision_list_it].objs), &(collision_cache[*collision_list_it].exec_data));
+			if ((collision_cache[*collision_list_it].exec_func) &&
+					(collision_cache[*collision_list_it].result == COLLISION_RESULT_COLLISION) &&
+					collision_cache[*collision_list_it].exec_data != NULL) {
+				collision_cache[*collision_list_it].exec_func(&(collision_cache[*collision_list_it].objs), collision_cache[*collision_list_it].exec_data);
 			}
 		}
 		collision_cache[*collision_list_it].processed = PROCESS_STATE_EXECUTED;
@@ -538,6 +530,7 @@ void execute_collisions()
 int supercollider_thread(void *num)
 {
 	int thread_num = *(int *) num;
+	collision_exec_data temp_data;
 
 	if (SDL_LockMutex(conditions[thread_num].mutex) < 0) {
 		Error(LOCATION, "supercollider mutex lock failed: %s\n", SDL_GetError());
@@ -551,7 +544,19 @@ int supercollider_thread(void *num)
 			return 0;
 		}
 
-		thread_collision_vars[thread_num].collision->result = thread_collision_vars[thread_num].collision->eval_func(&(thread_collision_vars[thread_num].collision->objs), &(thread_collision_vars[thread_num].collision->exec_data));
+		thread_collision_vars[thread_num].collision->result = thread_collision_vars[thread_num].collision->eval_func(&(thread_collision_vars[thread_num].collision->objs), &temp_data);
+
+		//we only care about the data if there is a collision
+		if(thread_collision_vars[thread_num].collision->result == COLLISION_RESULT_COLLISION) {
+			if(thread_collision_vars[thread_num].collision->exec_data == NULL) {
+				thread_collision_vars[thread_num].collision->exec_data = (collision_exec_data*)vm_malloc(sizeof(collision_exec_data));
+			}
+			memcpy(thread_collision_vars[thread_num].collision->exec_data, &temp_data, sizeof(collision_exec_data));
+		}
+		else if (thread_collision_vars[thread_num].collision->exec_data != NULL) {
+			vm_free(thread_collision_vars[thread_num].collision->exec_data);
+			thread_collision_vars[thread_num].collision->exec_data = NULL;
+		}
 
 		thread_collision_vars[thread_num].collision->processed = PROCESS_STATE_COLLIDED;
 		thread_collision_vars[thread_num].collision = NULL;

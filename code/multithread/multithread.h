@@ -126,7 +126,7 @@ typedef struct
 	mc_info mc_entry;
 	mc_info mc_exit;
 	int quadrant_num;
-	int hull_exit_collision;
+	bool hull_exit_collision;
 } beam_ship_exec;
 
 typedef struct
@@ -154,17 +154,14 @@ typedef struct
 	collision_info_struct misc_hit_info;
 } misc_exec;
 
-typedef struct
+typedef union
 {
-	union
-	{
-		ship_weapon_exec ship_weapon;
-		beam_ship_exec beam_ship;
-		beam_misc_exec beam_misc;
-		ship_ship_exec ship_ship;
-		weapon_weapon_exec weapon_weapon;
-		misc_exec misc;
-	};
+	ship_weapon_exec ship_weapon;
+	beam_ship_exec beam_ship;
+	beam_misc_exec beam_misc;
+	ship_ship_exec ship_ship;
+	weapon_weapon_exec weapon_weapon;
+	misc_exec misc;
 } collision_exec_data;
 
 typedef collision_result (*collision_eval_func)(obj_pair *, collision_exec_data *);
@@ -180,7 +177,7 @@ typedef struct
 	bool in_use;
 	collision_result result;
 	collision_eval_func eval_func;
-	collision_exec_data exec_data;
+	collision_exec_data *exec_data;
 	collision_exec_func exec_func;
 } collision_data;
 
@@ -201,6 +198,8 @@ extern SDL_mutex *beam_light_mutex;
 extern SDL_mutex *ship_mutex;
 extern bool threads_alive;
 extern SCP_hash_map<unsigned int, collision_data> collision_cache;
+
+//extern collision_data collision_cache[MAX_OBJECTS * MAX_OBJECTS];
 
 void create_threads();
 void destroy_threads();

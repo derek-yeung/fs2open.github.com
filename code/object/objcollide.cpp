@@ -1192,7 +1192,7 @@ void obj_reset_colliders()
 {
 	Collision_sort_list.clear();
 	if (Cmdline_num_threads > 1) {
-		collision_cache.clear();
+//		collision_cache.clear();
 	}
 	else {
 		Collision_cached_pairs.clear();

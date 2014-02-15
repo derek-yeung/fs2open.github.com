@@ -607,7 +607,6 @@ collision_result collide_asteroid_ship_eval(obj_pair *pair, collision_exec_data 
 		hit = asteroid_check_collision(pair->a, pair->b, &data->misc.hitpos, &data->misc.misc_hit_info);
 		if (hit) {
 			return COLLISION_RESULT_COLLISION;
-
 		}
 
 		return COLLISION_RESULT_NO_COLLISION;
