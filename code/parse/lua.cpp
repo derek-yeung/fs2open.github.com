@@ -10375,7 +10375,7 @@ ADE_FUNC(isValid, l_Player, NULL, "Detects whether handle is valid", "boolean", 
 	if(!ade_get_args(L, "o", l_Player.Get(&idx)))
 		return ADE_RETURN_NIL;
 
-	if(idx < 0 || idx >= Player_num)
+	if (idx < 0 || idx >= MAX_PLAYERS)
 		return ADE_RETURN_FALSE;
 
 	return ADE_RETURN_TRUE;
@@ -10387,7 +10387,7 @@ ADE_FUNC(getName, l_Player, NULL, "Gets current player name", "string", "Player 
 	if(!ade_get_args(L, "o", l_Player.Get(&idx)))
 		return ade_set_error(L, "s", "");
 
-	if(idx < 0 || idx >= Player_num)
+	if (idx < 0 || idx >= MAX_PLAYERS)
 		return ade_set_error(L, "s", "");
 
 	return ade_set_args(L, "s", Players[idx].callsign);
@@ -10399,7 +10399,7 @@ ADE_FUNC(getCampaignFilename, l_Player, NULL, "Gets current player campaign file
 	if(!ade_get_args(L, "o", l_Player.Get(&idx)))
 		return ade_set_error(L, "s", "");
 
-	if(idx < 0 || idx >= Player_num)
+	if (idx < 0 || idx >= MAX_PLAYERS)
 		return ade_set_error(L, "s", "");
 
 	return ade_set_args(L, "s", Players[idx].current_campaign);
@@ -10411,7 +10411,7 @@ ADE_FUNC(getImageFilename, l_Player, NULL, "Gets current player image filename",
 	if(!ade_get_args(L, "o", l_Player.Get(&idx)))
 		return ade_set_error(L, "s", "");
 
-	if(idx < 0 || idx >= Player_num)
+	if (idx < 0 || idx >= MAX_PLAYERS)
 		return ade_set_error(L, "s", "");
 
 	return ade_set_args(L, "s", Players[idx].image_filename);
@@ -10450,7 +10450,7 @@ ADE_FUNC(getSquadronName, l_Player, NULL, "Gets current player squad name", "str
 	if(!ade_get_args(L, "o", l_Player.Get(&idx)))
 		return ade_set_error(L, "s", "");
 
-	if(idx < 0 || idx >= Player_num)
+	if (idx < 0 || idx >= MAX_PLAYERS)
 		return ade_set_error(L, "s", "");
 
 	return ade_set_args(L, "s", Players[idx].s_squad_name);
@@ -10462,7 +10462,7 @@ ADE_FUNC(getMultiSquadronName, l_Player, NULL, "Gets current player multi squad 
 	if(!ade_get_args(L, "o", l_Player.Get(&idx)))
 		return ade_set_error(L, "s", "");
 
-	if(idx < 0 || idx >= Player_num)
+	if (idx < 0 || idx >= MAX_PLAYERS)
 		return ade_set_error(L, "s", "");
 
 	return ade_set_args(L, "s", Players[idx].m_squad_name);
@@ -10714,9 +10714,9 @@ ADE_FUNC(setFOV, l_Camera, "[number FOV, number Zoom Time, number Zoom Accelerat
 ADE_FUNC(setOrientation, l_Camera, "[world orientation Orientation, number Rotation Time, number Acceleration Time, number Deceleration time]",
 		"Sets camera orientation and velocity data."
 		"<br>Orientation is the final orientation for the camera, after it has finished moving. If not specified, the camera will simply stop at its current orientation."
-		"<br>Rotation time is how long total, including acceleration, the camera should take to rotate. If it is not specified, the camera will jump to the specified orientation."
-		"<br>Acceleration time is how long it should take the camera to get 'up to speed'. If not specified, the camera will instantly start moving."
-		"<br>Deceleration time is how long it should take the camera to slow down. If not specified, the camera will instantly stop moving.",
+		"<br>Rotation time (seconds) is how long total, including acceleration, the camera should take to rotate. If it is not specified, the camera will jump to the specified orientation."
+		"<br>Acceleration time (seconds) is how long it should take the camera to get 'up to speed'. If not specified, the camera will instantly start moving."
+		"<br>Deceleration time (seconds) is how long it should take the camera to slow down. If not specified, the camera will instantly stop moving.",
 		"boolean", "true if successful, false or nil otherwise")
 {
 	camid cid;
@@ -10747,9 +10747,9 @@ ADE_FUNC(setOrientation, l_Camera, "[world orientation Orientation, number Rotat
 ADE_FUNC(setPosition, l_Camera, "[wvector Position, number Translation Time, number Acceleration Time, number Deceleration Time]",
 		"Sets camera position and velocity data."
 		"<br>Position is the final position for the camera. If not specified, the camera will simply stop at its current position."
-		"<br>Translation time is how long total, including acceleration, the camera should take to move. If it is not specified, the camera will jump to the specified position."
-		"<br>Acceleration time is how long it should take the camera to get 'up to speed'. If not specified, the camera will instantly start moving."
-		"<br>Deceleration time is how long it should take the camera to slow down. If not specified, the camera will instantly stop moving.",
+		"<br>Translation time (seconds) is how long total, including acceleration, the camera should take to move. If it is not specified, the camera will jump to the specified position."
+		"<br>Acceleration time (seconds) is how long it should take the camera to get 'up to speed'. If not specified, the camera will instantly start moving."
+		"<br>Deceleration time (seconds) is how long it should take the camera to slow down. If not specified, the camera will instantly stop moving.",
 		"boolean", "true if successful, false or nil otherwise")
 {
 	camid cid;
@@ -11882,6 +11882,11 @@ ADE_FUNC(getCurrentMPStatus, l_Base, "NIL", "Gets this computers current MP stat
 		return ade_set_args(L, "s", "MULTIPLAYER_STANDALONE");
 
 	return ade_set_args(L, "s", "SINGLEPLAYER");
+}
+
+ADE_FUNC(getCurrentPlayer, l_Base, NULL, "Gets a handle of the currently used player.<br><b>Note:</b> If there is no current player then the first player will be returned, check the game state to make sure you have a valid player handle.", "player", "Player handle")
+{
+	return ade_set_args(L, "o", l_Player.Set(Player_num));
 }
 
 ADE_FUNC(setControlMode, l_Base, "NIL or enumeration LE_*_CONTROL", "Sets the current control mode for the game.", "string", "Current control mode")

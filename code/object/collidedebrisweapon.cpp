@@ -72,7 +72,7 @@ int collide_debris_weapon( obj_pair * pair )
 
 		Script_system.SetHookObjects(2, "Self",pdebris, "Object", weapon);
 		if((debris_override && !weapon_override) || (!debris_override && !weapon_override))
-			Script_system.RunCondition(CHA_COLLIDEWEAPON, '\0', NULL, pdebris);
+			Script_system.RunCondition(CHA_COLLIDEWEAPON, '\0', NULL, pdebris, Weapons[weapon->instance].weapon_info_index);
 
 		Script_system.RemHookVars(4, "Weapon", "Debris", "Self","ObjectB");
 		return 0;
@@ -127,7 +127,7 @@ int collide_asteroid_weapon( obj_pair * pair )
 
 		Script_system.SetHookObjects(2, "Self",pasteroid, "Object", weapon);
 		if((asteroid_override && !weapon_override) || (!asteroid_override && !weapon_override))
-			Script_system.RunCondition(CHA_COLLIDEWEAPON, '\0', NULL, pasteroid);
+			Script_system.RunCondition(CHA_COLLIDEWEAPON, '\0', NULL, pasteroid, Weapons[weapon->instance].weapon_info_index);
 
 		Script_system.RemHookVars(4, "Weapon", "Asteroid", "Self","ObjectB");
 		return 0;
@@ -159,7 +159,7 @@ void collide_debris_weapon_exec(obj_pair *pair, collision_exec_data *data)
 
 	Script_system.SetHookObjects(2, "Self", pair->a, "Object", pair->b);
 	if ((debris_override && !weapon_override) || (!debris_override && !weapon_override))
-		Script_system.RunCondition(CHA_COLLIDEWEAPON, '\0', NULL, pair->a);
+		Script_system.RunCondition(CHA_COLLIDEWEAPON, '\0', NULL, pair->a, Weapons[pair->b->instance].weapon_info_index);
 
 	Script_system.RemHookVars(4, "Weapon", "Debris", "Self", "ObjectB");
 }
@@ -199,7 +199,7 @@ void collide_asteroid_weapon_exec(obj_pair *pair, collision_exec_data *data)
 
 	Script_system.SetHookObjects(2, "Self", pair->a, "Object", pair->b);
 	if ((asteroid_override && !weapon_override) || (!asteroid_override && !weapon_override))
-		Script_system.RunCondition(CHA_COLLIDEWEAPON, '\0', NULL, pair->a);
+		Script_system.RunCondition(CHA_COLLIDEWEAPON, '\0', NULL, pair->a, Weapons[pair->b->instance].weapon_info_index);
 
 	Script_system.RemHookVars(4, "Weapon", "Asteroid", "Self", "ObjectB");
 }

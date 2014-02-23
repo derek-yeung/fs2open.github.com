@@ -330,7 +330,7 @@ void os_poll()
 				case SDL_WINDOWEVENT_MINIMIZED:
 					case SDL_WINDOWEVENT_FOCUS_LOST:
 					{
-						if (fAppActive) {
+						if (fAppActive && !Cmdline_no_unfocus_pause) {
 							game_pause();
 							fAppActive = false;
 						}
@@ -340,7 +340,7 @@ void os_poll()
 					case SDL_WINDOWEVENT_RESTORED:
 					case SDL_WINDOWEVENT_FOCUS_GAINED:
 					{
-						if (!fAppActive) {
+						if (!fAppActive && !Cmdline_no_unfocus_pause) {
 							game_unpause();
 							fAppActive = true;
 						}

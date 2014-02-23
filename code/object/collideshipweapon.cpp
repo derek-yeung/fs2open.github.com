@@ -407,7 +407,7 @@ int ship_weapon_check_collision(object *ship_objp, object *weapon_objp, float ti
 
 		Script_system.SetHookObjects(2, "Self",ship_objp, "Object", weapon_objp);
 		if(!(weapon_override && !ship_override))
-			Script_system.RunCondition(CHA_COLLIDEWEAPON, '\0', NULL, ship_objp);
+			Script_system.RunCondition(CHA_COLLIDEWEAPON, '\0', NULL, ship_objp, wp->weapon_info_index);
 
 		Script_system.SetHookObjects(2, "Self",weapon_objp, "Object", ship_objp);
 		if((weapon_override && !ship_override) || (!weapon_override && !ship_override))
@@ -604,7 +604,7 @@ void collide_ship_weapon_exec(obj_pair * pair, collision_exec_data *data)
 
 	Script_system.SetHookObjects(2, "Self",pair->a, "Object", pair->b);
 	if(!(weapon_override && !ship_override))
-		Script_system.RunCondition(CHA_COLLIDEWEAPON, '\0', NULL, pair->a);
+		Script_system.RunCondition(CHA_COLLIDEWEAPON, '\0', NULL, pair->a, Weapons[pair->b->instance].weapon_info_index);
 
 	Script_system.SetHookObjects(2, "Self",pair->b, "Object", pair->a);
 	if((weapon_override && !ship_override) || (!weapon_override && !ship_override))
