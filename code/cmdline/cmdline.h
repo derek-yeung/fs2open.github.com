@@ -119,6 +119,7 @@ extern int Cmdline_nomovies;	// WMC Toggles movie playing support
 extern int Cmdline_no_set_gamma;
 extern int Cmdline_novbo;
 extern int Cmdline_no_fbo;
+extern int Cmdline_no_pbo;
 extern int Cmdline_noglsl;
 extern int Cmdline_mipmap;
 extern int Cmdline_ati_color_swap;
@@ -142,7 +143,6 @@ extern int Cmdline_show_stats;
 extern int Cmdline_save_render_targets;
 extern int Cmdline_debug_window;
 extern int Cmdline_verify_vps;
-extern int Cmdline_no_grab;
 extern int Cmdline_reparse_mainhall;
 extern bool Cmdline_frame_profile;
 extern bool Cmdline_profile_write_file;

@@ -27,6 +27,7 @@
 #include "cmdline/cmdline.h"
 #include "sound/voicerec.h"
 #include "graphics/2d.h"
+#include "cmdline/cmdline.h"
 
 #ifdef __linux__
 #include <execinfo.h>
@@ -151,7 +152,7 @@ void os_set_process_affinity()
 static SDL_Window* main_window = NULL;
 
 // os-wide globals
-static int			fAppActive = 0;
+static bool			fAppActive = false;
 static char			szWinTitle[128];
 static char			szWinClass[128];
 static int			Os_inited = 0;
@@ -207,7 +208,7 @@ void os_init(const char * wclass, const char * title, const char *app_name, cons
 
 	mprintf(("  Initializing SDL...\n"));
 
-	if (SDL_Init(0) < 0)
+	if (SDL_Init(SDL_INIT_EVENTS) < 0)
 	{
 		fprintf(stderr, "Couldn't init SDL: %s", SDL_GetError());
 		mprintf(("Couldn't init SDL: %s", SDL_GetError()));
@@ -271,6 +272,7 @@ SDL_Window* os_get_window()
 void os_set_window(SDL_Window* new_handle)
 {
 	main_window = new_handle;
+	fAppActive = true;
 }
 
 // process management -----------------------------------------------------------------
@@ -330,8 +332,11 @@ void os_poll()
 				case SDL_WINDOWEVENT_MINIMIZED:
 					case SDL_WINDOWEVENT_FOCUS_LOST:
 					{
-						if (fAppActive && !Cmdline_no_unfocus_pause) {
-							game_pause();
+						if (fAppActive) {
+							if (!Cmdline_no_unfocus_pause) {
+								game_pause();
+							}
+							
 							fAppActive = false;
 						}
 						break;
@@ -340,8 +345,11 @@ void os_poll()
 					case SDL_WINDOWEVENT_RESTORED:
 					case SDL_WINDOWEVENT_FOCUS_GAINED:
 					{
-						if (!fAppActive && !Cmdline_no_unfocus_pause) {
-							game_unpause();
+						if (!fAppActive) {
+							if (!Cmdline_no_unfocus_pause) {
+								game_unpause();
+							}
+							
 							fAppActive = true;
 						}
 						break;
@@ -351,7 +359,9 @@ void os_poll()
 						break;
 				}
 			}
+			
 			gr_activate(fAppActive);
+			
 			break;
 		}
 
