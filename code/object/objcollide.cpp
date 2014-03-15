@@ -1217,14 +1217,196 @@ void obj_collide_retime_cached_pairs(int checkdly)
 	}
 }
 
+inline bool overlap_check(float i_min, float i_max, float j_min, float j_max)
+{
+	bool collide = false;
+
+	if(i_min < j_min)
+	{
+		if(j_min < i_max)
+		{
+			collide = true;
+		}
+	}
+	else
+	{
+		if(i_min < j_max)
+		{
+			collide = true;
+		}
+	}
+
+	return collide;
+}
+
+void new_overlap_collider(SCP_vector<int> *list)
+{
+	size_t i, j;
+	bool collide = false;
+	float i_min, i_max, j_min, j_max;
+
+	for (i = 0; i < (*list).size(); i++)
+	{
+		for (j = (i + 1); j < (*list).size(); j++)
+		{
+			collide = false;
+			//axis 1
+//			i_min = obj_get_collider_endpoint((*list)[i], 0, true);
+//			j_min = obj_get_collider_endpoint((*list)[j], 0, true);
+//			if(i_min < j_min)
+//			{
+//				i_max = obj_get_collider_endpoint((*list)[i], 0, false);
+//				if(j_min < i_max)
+//				{
+//					collide = true;
+//				}
+//			}
+//			else
+//			{
+//				j_max = obj_get_collider_endpoint((*list)[j], 0, false);
+//				if(i_min < j_max)
+//				{
+//					collide = true;
+//				}
+//			}
+//
+//			if(collide)
+			{
+				//axis 2
+				i_min = obj_get_collider_endpoint((*list)[i], 1, true);
+				j_min = obj_get_collider_endpoint((*list)[j], 1, true);
+				if(i_min < j_min)
+				{
+					i_max = obj_get_collider_endpoint((*list)[i], 1, false);
+					if(j_min < i_max)
+					{
+						collide = true;
+					}
+				}
+				else
+				{
+					j_max = obj_get_collider_endpoint((*list)[j], 1, false);
+					if(i_min < j_max)
+					{
+						collide = true;
+					}
+				}
+				if(collide)
+				{
+					//axis 3
+					i_min = obj_get_collider_endpoint((*list)[i], 2, true);
+					j_min = obj_get_collider_endpoint((*list)[j], 2, true);
+					if(i_min < j_min)
+					{
+						i_max = obj_get_collider_endpoint((*list)[i], 2, false);
+						if(j_min < i_max)
+						{
+							collide = true;
+						}
+					}
+					else
+					{
+						j_max = obj_get_collider_endpoint((*list)[j], 2, false);
+						if(i_min < j_max)
+						{
+							collide = true;
+						}
+					}
+					if(collide)
+					{
+						if (Cmdline_num_threads > 1) {
+							collision_pair_add(&Objects[(*list)[i]], &Objects[(*list)[j]]);
+						}
+						else {
+							obj_collide_pair(&Objects[(*list)[i]], &Objects[(*list)[j]]);
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+void collision_quicksort_multithread(SCP_vector<int> *collision_sort_list, int axis)
+{
+	int SDL_return = 0;
+	bool busy = false;
+	collider_quicksort_vars vars;
+	int i;
+
+	vars.list = collision_sort_list;
+	vars.left = 0;
+	vars.right = (*vars.list).size() - 1;
+	vars.axis = axis;
+	if (SDL_LockMutex(quicksort_queue_mutex) < 0) {
+		Error(LOCATION, "quicksort_queue_mutex lock failed: %s\n", SDL_GetError());
+	}
+	collision_quicksort_queue.push(vars);
+	if (SDL_UnlockMutex(quicksort_queue_mutex) < 0) {
+		Error(LOCATION, "quicksort_queue_mutex unlock failed: %s\n", SDL_GetError());
+	}
+
+	while (1) {
+		busy = false;
+		if (!collision_quicksort_queue.empty()) {
+			if (SDL_LockMutex(quicksort_queue_mutex) < 0) {
+				Error(LOCATION, "quicksort_queue_mutex lock failed: %s\n", SDL_GetError());
+			}
+			if (SDL_CondBroadcast(quicksort_queue_condition) < 0) {
+				Error(LOCATION, "collider_quicksort_thread conditionl var signal failed: %s\n", SDL_GetError());
+			}
+			if (SDL_UnlockMutex(quicksort_queue_mutex) < 0) {
+				Error(LOCATION, "quicksort_queue_mutex unlock failed: %s\n", SDL_GetError());
+			}
+		}
+		for (i = 0; i < Cmdline_num_threads; i++) {
+			if (collision_quicksort_state[i].status == PROCESS_STATE_BUSY) {
+				busy = true;
+				break;
+			}
+		}
+		if (!busy && collision_quicksort_queue.empty()) {
+			break;
+		}
+	}
+}
+
 void obj_sort_and_collide()
 {
 	if (Cmdline_dis_collisions)
 		return;
 
-	if ( !(Game_detail_flags & DETAIL_FLAG_COLLISION) )
+	if (!(Game_detail_flags & DETAIL_FLAG_COLLISION))
 		return;
 
+#ifdef MULTITHREADING_BROADPHASE_COLLISIONS
+	SCP_vector<int> sort_list_y;
+	SCP_vector<int> sort_list_z;
+
+	sort_list_y.clear();
+	if ((Cmdline_num_threads > 1) && (Collision_sort_list.size() > QUICKSORT_THRESHOLD)) {
+		collision_quicksort_multithread(&Collision_sort_list, 0);
+	} else {
+		obj_quicksort_colliders(&Collision_sort_list, 0, Collision_sort_list.size() - 1, 0);
+	}
+	obj_find_overlap_colliders(&sort_list_y, &Collision_sort_list, 0, false);
+
+	sort_list_z.clear();
+	if ((Cmdline_num_threads > 1) && (sort_list_y.size() > QUICKSORT_THRESHOLD)) {
+		collision_quicksort_multithread(&sort_list_y, 1);
+	} else {
+		obj_quicksort_colliders(&sort_list_y, 0, sort_list_y.size() - 1, 1);
+	}
+	obj_find_overlap_colliders(&sort_list_z, &sort_list_y, 1, false);
+
+	sort_list_y.clear();
+	if ((Cmdline_num_threads > 1) && (sort_list_z.size() > QUICKSORT_THRESHOLD)) {
+		collision_quicksort_multithread(&sort_list_z, 2);
+	} else {
+		obj_quicksort_colliders(&sort_list_z, 0, sort_list_z.size() - 1, 2);
+	}
+	obj_find_overlap_colliders(&sort_list_y, &sort_list_z, 2, true);
+#else
 	SCP_vector<int> sort_list_y;
 	SCP_vector<int> sort_list_z;
 
@@ -1239,8 +1421,10 @@ void obj_sort_and_collide()
 	sort_list_y.clear();
 	obj_quicksort_colliders(&sort_list_z, 0, sort_list_z.size() - 1, 2);
 	obj_find_overlap_colliders(&sort_list_y, &sort_list_z, 2, true);
+#endif
 }
 
+#if 1
 void obj_find_overlap_colliders(SCP_vector<int> *overlap_list_out, SCP_vector<int> *list, int axis, bool collide)
 {
 	size_t i, j;
@@ -1249,20 +1433,20 @@ void obj_find_overlap_colliders(SCP_vector<int> *overlap_list_out, SCP_vector<in
 	SCP_vector<int> overlappers;
 
 	float min;
-	float max;
-	float overlap_min;
+//	float max;
+//	float overlap_min;
 	float overlap_max;
 	
 	overlappers.clear();
 
-	for ( i = 0; i < (*list).size(); ++i ) {
+	for (i = 0; i < (*list).size(); ++i) {
 		overlapped = false;
 
 		min = obj_get_collider_endpoint((*list)[i], axis, true);
-		max = obj_get_collider_endpoint((*list)[i], axis, false);
+//		max = obj_get_collider_endpoint((*list)[i], axis, false);
 
 		for ( j = 0; j < overlappers.size(); ) {
-			overlap_min = obj_get_collider_endpoint(overlappers[j], axis, true);
+//			overlap_min = obj_get_collider_endpoint(overlappers[j], axis, true);
 			overlap_max = obj_get_collider_endpoint(overlappers[j], axis, false);
 			if ( min <= overlap_max ) {
 				overlapped = true;
@@ -1271,14 +1455,19 @@ void obj_find_overlap_colliders(SCP_vector<int> *overlap_list_out, SCP_vector<in
 					first_not_added = false;
 					overlap_list_out->push_back(overlappers[j]);
 				}
-				
-				if ( collide ) {
+
+				if (collide) {
+#ifdef MULTITHREADING_NARROWPHASE_COLLISIONS
 					if (Cmdline_num_threads > 1) {
 						collision_pair_add(&Objects[(*list)[i]], &Objects[overlappers[j]]);
 					}
-					else {
+					else
+					{
 						obj_collide_pair(&Objects[(*list)[i]], &Objects[overlappers[j]]);
 					}
+#else
+					obj_collide_pair(&Objects[(*list)[i]], &Objects[overlappers[j]]);
+#endif
 				}
 			} else {
 				overlappers[j] = overlappers.back();
@@ -1302,6 +1491,89 @@ void obj_find_overlap_colliders(SCP_vector<int> *overlap_list_out, SCP_vector<in
 
 	overlapped = true;
 }
+#else
+void obj_find_overlap_colliders(SCP_vector<int> *overlap_list_out, SCP_vector<int> *list, int axis, bool collide)
+{
+	size_t i, j, i_max, j_max;
+	bool overlapped;
+	bool first_not_added = true;
+	SCP_vector<int> overlappers;
+
+	float min;
+	float max;
+	float overlap_min;
+	float overlap_max;
+
+	overlappers.clear();
+
+	i_max = (*list).size();
+
+	for (i = 0; i < i_max; ++i) {
+		min = obj_get_collider_endpoint((*list)[i], 0, true);
+		j_max = overlappers.size();
+
+		for ( j = 0; j < j_max;) {
+			overlap_max = obj_get_collider_endpoint(overlappers[j], 0, false);
+			if (min <= overlap_max) {
+				overlapped = false;
+				min = obj_get_collider_endpoint((*list)[i], 1, true);
+				overlap_min = obj_get_collider_endpoint(overlappers[j], 1, true);
+				if(min <= overlap_min)
+				{
+					max = obj_get_collider_endpoint((*list)[i], 1, false);
+					if (overlap_min <= max)
+					{
+						overlapped =  true;
+					}
+				}
+				else
+				{
+					overlap_max = obj_get_collider_endpoint(overlappers[j], 1, false);
+					if (min <= overlap_max)
+					{
+						overlapped =  true;
+					}
+				}
+				if(overlapped)
+				{
+					min = obj_get_collider_endpoint((*list)[i], 2, true);
+					overlap_min = obj_get_collider_endpoint(overlappers[j], 2, true);
+					if(min < overlap_min)
+					{
+						max = obj_get_collider_endpoint((*list)[i], 2, false);
+						if (overlap_min <= max)
+						{
+							overlapped =  true;
+						}
+					}
+					else
+					{
+						overlap_max = obj_get_collider_endpoint(overlappers[j], 2, false);
+						if (min <= overlap_max)
+						{
+							overlapped =  true;
+						}
+					}
+				}
+				if (overlapped) {
+					if (Cmdline_num_threads > 1) {
+						collision_pair_add(&Objects[(*list)[i]], &Objects[overlappers[j]]);
+					} else {
+						obj_collide_pair(&Objects[(*list)[i]], &Objects[overlappers[j]]);
+					}
+				}
+			} else {
+				overlappers[j] = overlappers.back();
+				overlappers.pop_back();
+				continue;
+			}
+			j++;
+		}
+
+		overlappers.push_back((*list)[i]);
+	}
+}
+#endif
 
 void obj_quicksort_colliders(SCP_vector<int> *list, int left, int right, int axis)
 {

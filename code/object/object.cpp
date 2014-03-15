@@ -1479,17 +1479,19 @@ void obj_move_all(float frametime)
 	beam_move_all_pre();
 
 	profile_begin("Collision Detection");
-	if ( Collisions_enabled ) {
-		{
-			if (Cmdline_num_threads > 1) {
-				collision_pair_clear();
-			}
-			obj_sort_and_collide();
-			if (Cmdline_num_threads > 1) {
-				evaluate_collisions();
-				execute_collisions();
-			}
+	if (Collisions_enabled) {
+#ifdef MULTITHREADING_NARROWPHASE_COLLISIONS
+		if (Cmdline_num_threads > 1) {
+			collision_pair_clear();
 		}
+#endif
+		obj_sort_and_collide();
+#ifdef MULTITHREADING_NARROWPHASE_COLLISIONS
+		if (Cmdline_num_threads > 1) {
+			evaluate_collisions();
+			execute_collisions();
+		}
+#endif
 	}
 	profile_end("Collision Detection");
 

@@ -10,6 +10,11 @@
 
 #define MULTITHREADING_ENABLED
 #define MAX_THREADS											256
+#define PLACEHOLDER_THREAD_COUNT							8
+
+#define MULTITHREADING_BROADPHASE_COLLISIONS
+//#define MULTITHREADING_NARROWPHASE_COLLISIONS
+#define QUICKSORT_THRESHOLD									32
 
 #define THREAD_WAIT											-1
 #define THREAD_EXIT											-2
@@ -53,6 +58,7 @@ typedef enum
 
 typedef enum
 {
+	PROCESS_STATE_IDLE,
 	PROCESS_STATE_UNPROCESSED,
 	PROCESS_STATE_BUSY,
 	PROCESS_STATE_COLLIDED,
@@ -187,8 +193,22 @@ typedef struct
 	//copy of object pointers for reading
 //	object *a;
 //	object *b;
+	SCP_queue<unsigned int> collision_queue;
 } thread_vars;
 
+typedef struct
+{
+	SDL_Thread *thread;
+	process_state status;
+} collider_quicksort_state;
+
+typedef struct
+{
+	SCP_vector<int> *list;
+	int left;
+	int right;
+	int axis;
+} collider_quicksort_vars;
 
 extern SDL_mutex *render_mutex;
 extern SDL_mutex *g3_count_mutex;
@@ -198,6 +218,11 @@ extern SDL_mutex *beam_light_mutex;
 extern SDL_mutex *ship_mutex;
 extern bool threads_alive;
 extern SCP_hash_map<unsigned int, collision_data> collision_cache;
+
+extern SCP_queue<collider_quicksort_vars> collision_quicksort_queue;
+extern SDL_mutex *quicksort_queue_mutex;
+extern SDL_cond *quicksort_queue_condition;
+extern SCP_vector<collider_quicksort_state> collision_quicksort_state;
 
 //extern collision_data collision_cache[MAX_OBJECTS * MAX_OBJECTS];
 

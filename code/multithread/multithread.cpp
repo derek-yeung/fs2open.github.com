@@ -54,7 +54,14 @@ SCP_vector<unsigned int> thread_number;
 SCP_vector<thread_vars> thread_collision_vars;
 SCP_vector<thread_condition> conditions;
 
+SCP_queue<collider_quicksort_vars> collision_quicksort_queue;
+SDL_mutex *quicksort_queue_mutex = NULL;
+SDL_cond *quicksort_queue_condition = NULL;
+SCP_vector<collider_quicksort_state> collision_quicksort_state;
+
 bool threads_alive = false;
+
+extern SCP_hash_map<uint, collider_pair> Collision_cached_pairs;
 
 typedef struct
 {
@@ -69,7 +76,8 @@ collision_func_set collision_func_table[MAX_OBJECT_TYPES][MAX_OBJECT_TYPES];
 
 SCP_hash_map<unsigned int, collision_data> collision_cache;
 
-int supercollider_thread(void *obj_collision_vars_ptr);
+int supercollider_thread(void *num);
+int collider_quicksort_thread(void *num);
 
 //char *pref_path = NULL;
 //
@@ -144,14 +152,28 @@ void create_threads()
 		Error(LOCATION, "ship_mutex create failed: %s\n", SDL_GetError());
 	}
 
+	quicksort_queue_mutex = SDL_CreateMutex();
+	if (quicksort_queue_mutex == NULL) {
+		Error(LOCATION, "quicksort_queue_mutex create failed: %s\n", SDL_GetError());
+	}
+	quicksort_queue_condition = SDL_CreateCond();
+	if (quicksort_queue_condition == NULL) {
+		Error(LOCATION, "quicksort_queue_condition create failed: %s\n", SDL_GetError());
+	}
 	if (Cmdline_num_threads < 1) {
 		Cmdline_num_threads = 1;
 	}
 	conditions.resize(Cmdline_num_threads);
+	collision_quicksort_state.resize(Cmdline_num_threads);
 
 	//ensure these numbers are filled before creating our threads
 	for (i = 0; i < Cmdline_num_threads; i++) {
 		thread_number.push_back(i);
+	}
+
+	while(!collision_quicksort_queue.empty())
+	{
+		collision_quicksort_queue.pop();
 	}
 
 	for (i = 0; i < Cmdline_num_threads; i++) {
@@ -167,9 +189,20 @@ void create_threads()
 		}
 		sprintf(buffer, "Collider Thread %d", thread_number[i]);
 		conditions[i].thread = SDL_CreateThread(supercollider_thread, buffer, &thread_number[i]);
-		if (conditions[i].mutex == NULL) {
+		if (conditions[i].thread == NULL) {
 			Error(LOCATION, "supercollider thread create failed: %s\n", SDL_GetError());
 		}
+	}
+
+	for (i = 0; i < Cmdline_num_threads; i++) {
+		nprintf(("Multithread", "multithread: Creating quicksort queue thread %d\n", i));
+		sprintf(buffer, "Quicksort Thread %d", thread_number[i]);
+//		SDL_CreateThread(collider_quicksort_thread, buffer, &thread_number[i]);
+		collision_quicksort_state[i].thread = SDL_CreateThread(collider_quicksort_thread, buffer, &thread_number[i]);
+		if (collision_quicksort_state[i].thread == NULL) {
+			Error(LOCATION, "collider_quicksort_thread create failed: %s\n", SDL_GetError());
+		}
+		collision_quicksort_state[i].status = PROCESS_STATE_IDLE;
 	}
 
 	//populate functions for lookup table
@@ -224,22 +257,44 @@ void destroy_threads()
 		if (SDL_CondSignal(conditions[i].condition) < 0) {
 			Error(LOCATION, "supercollider conditionl var signal failed: %s\n", SDL_GetError());
 		}
-		SDL_WaitThread(conditions[i].thread, &retval);
 		SDL_DestroyCond(conditions[i].condition);
 		SDL_DestroyMutex(conditions[i].mutex);
+		SDL_WaitThread(conditions[i].thread, &retval);
 	}
 	SDL_DestroyMutex(render_mutex);
 	SDL_DestroyMutex(g3_count_mutex);
 	SDL_DestroyMutex(collision_master_mutex);
 	SDL_DestroyCond(collision_master_condition);
+
+//	if (SDL_LockMutex(quicksort_queue_mutex) < 0) {
+//		Error(LOCATION, "quicksort_queue_mutex lock failed: %s\n", SDL_GetError());
+//	}
+//	if (SDL_CondBroadcast(quicksort_queue_condition) < 0) {
+//		Error(LOCATION, "collider_quicksort_thread conditionl var signal failed: %s\n", SDL_GetError());
+//	}
+//	for (i = 0; i < Cmdline_num_threads; i++) {
+//	}
+	for (i = 0; i < Cmdline_num_threads; i++) {
+		while(collision_quicksort_state[i].status != PROCESS_STATE_EXECUTED) {
+//			if (SDL_LockMutex(quicksort_queue_mutex) < 0) {
+//				Error(LOCATION, "quicksort_queue_mutex lock failed: %s\n", SDL_GetError());
+//			}
+			if (SDL_CondBroadcast(quicksort_queue_condition) < 0) {
+				Error(LOCATION, "collider_quicksort_thread conditionl var signal failed: %s\n", SDL_GetError());
+			}
+		}
+	}
+	for (i = 0; i < Cmdline_num_threads; i++) {
+		SDL_WaitThread(collision_quicksort_state[i].thread, &retval);
+	}
+	SDL_DestroyMutex(quicksort_queue_mutex);
+	SDL_DestroyCond(quicksort_queue_condition);
 }
 
 void collision_pair_clear()
 {
 	collision_list.clear();
 }
-
-extern SCP_hash_map<uint, collider_pair> Collision_cached_pairs;
 
 void collision_pair_add(object *object_1, object *object_2)
 {
@@ -568,3 +623,125 @@ int supercollider_thread(void *num)
 	return 0;
 }
 
+int collider_quicksort_thread(void *num)
+{
+	int thread_num = *(int *) num;
+	collider_quicksort_vars vars, temp_vars_left, temp_vars_right;
+	int pivot_index;
+	float pivot_value;
+	int temp;
+	int store_index;
+	int i;
+
+	if (SDL_LockMutex(quicksort_queue_mutex) < 0) {
+		Error(LOCATION, "quicksort_queue_mutex lock failed: %s\n", SDL_GetError());
+	}
+	while (threads_alive) {
+		if (threads_alive == false) {
+			//check for exit condition
+			if (SDL_UnlockMutex(quicksort_queue_mutex) < 0) {
+				Error(LOCATION, "quicksort_queue_mutex unlock failed: %s\n", SDL_GetError());
+			}
+			collision_quicksort_state[thread_num].status = PROCESS_STATE_EXECUTED;
+			return 0;
+		}
+
+		while (collision_quicksort_queue.empty()) {
+			collision_quicksort_state[thread_num].status = PROCESS_STATE_IDLE;
+			if (SDL_CondWait(quicksort_queue_condition, quicksort_queue_mutex) < 0) {
+				Error(LOCATION, "collider_quicksort_thread conditional wait failed: %s\n", SDL_GetError());
+			}
+			if (threads_alive == false) {
+				//check for exit condition
+				if (SDL_UnlockMutex(quicksort_queue_mutex) < 0) {
+					Error(LOCATION, "quicksort_queue_mutex unlock failed: %s\n", SDL_GetError());
+				}
+				collision_quicksort_state[thread_num].status = PROCESS_STATE_EXECUTED;
+				return 0;
+			}
+		}
+		vars.list = collision_quicksort_queue.front().list;
+		vars.left = collision_quicksort_queue.front().left;
+		vars.right = collision_quicksort_queue.front().right;
+		vars.axis = collision_quicksort_queue.front().axis;
+		collision_quicksort_state[thread_num].status = PROCESS_STATE_BUSY;
+		collision_quicksort_queue.pop();
+		if (SDL_UnlockMutex(quicksort_queue_mutex) < 0) {
+			Error(LOCATION, "quicksort_queue_mutex unlock failed: %s\n", SDL_GetError());
+		}
+
+		if (vars.right > vars.left) {
+			pivot_index = vars.left + (vars.right - vars.left) / 2;
+
+			pivot_value = obj_get_collider_endpoint((*vars.list)[pivot_index], vars.axis, true);
+
+			// swap!
+			temp = (*vars.list)[pivot_index];
+			(*vars.list)[pivot_index] = (*vars.list)[vars.right];
+			(*vars.list)[vars.right] = temp;
+
+			store_index = vars.left;
+
+			for (i = vars.left; i < vars.right; ++i) {
+				if (obj_get_collider_endpoint((*vars.list)[i], vars.axis, true) <= pivot_value) {
+					temp = (*vars.list)[i];
+					(*vars.list)[i] = (*vars.list)[store_index];
+					(*vars.list)[store_index] = temp;
+					store_index++;
+				}
+			}
+
+			temp = (*vars.list)[vars.right];
+			(*vars.list)[vars.right] = (*vars.list)[store_index];
+			(*vars.list)[store_index] = temp;
+
+			temp_vars_left.list = vars.list;
+			temp_vars_left.left = vars.left;
+			temp_vars_left.right = store_index - 1;
+			temp_vars_left.axis = vars.axis;
+			temp_vars_right.list = vars.list;
+			temp_vars_right.left = store_index + 1;
+			temp_vars_right.right = vars.right;
+			temp_vars_right.axis = vars.axis;
+			if (SDL_LockMutex(quicksort_queue_mutex) < 0) {
+				Error(LOCATION, "quicksort_queue_mutex lock failed: %s\n", SDL_GetError());
+			}
+			if (temp_vars_left.right > temp_vars_left.left) {
+				if ((temp_vars_left.right - temp_vars_left.left) > (vars.list->size() / Cmdline_num_threads)) {
+					collision_quicksort_queue.push(temp_vars_left);
+				} else {
+					if (SDL_UnlockMutex(quicksort_queue_mutex) < 0) {
+						Error(LOCATION, "quicksort_queue_mutex unlock failed: %s\n", SDL_GetError());
+					}
+					obj_quicksort_colliders(temp_vars_left.list, temp_vars_left.left, temp_vars_left.right, temp_vars_left.axis);
+					if (SDL_LockMutex(quicksort_queue_mutex) < 0) {
+						Error(LOCATION, "quicksort_queue_mutex lock failed: %s\n", SDL_GetError());
+					}
+				}
+			}
+			if (temp_vars_right.right > temp_vars_right.left) {
+				if ((temp_vars_right.right - temp_vars_right.left) > (vars.list->size() / Cmdline_num_threads)) {
+					collision_quicksort_queue.push(temp_vars_right);
+				} else {
+					if (SDL_UnlockMutex(quicksort_queue_mutex) < 0) {
+						Error(LOCATION, "quicksort_queue_mutex unlock failed: %s\n", SDL_GetError());
+					}
+					obj_quicksort_colliders(temp_vars_right.list, temp_vars_right.left, temp_vars_right.right, temp_vars_right.axis);
+					if (SDL_LockMutex(quicksort_queue_mutex) < 0) {
+						Error(LOCATION, "quicksort_queue_mutex lock failed: %s\n", SDL_GetError());
+					}
+				}
+			}
+		}
+		else {
+			if (SDL_LockMutex(quicksort_queue_mutex) < 0) {
+				Error(LOCATION, "quicksort_queue_mutex lock failed: %s\n", SDL_GetError());
+			}
+		}
+	}
+	if (SDL_UnlockMutex(quicksort_queue_mutex) < 0) {
+		Error(LOCATION, "quicksort_queue_mutex unlock failed: %s\n", SDL_GetError());
+	}
+	collision_quicksort_state[thread_num].status = PROCESS_STATE_EXECUTED;
+	return 0;
+}
