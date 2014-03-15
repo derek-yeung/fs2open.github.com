@@ -266,19 +266,8 @@ void destroy_threads()
 	SDL_DestroyMutex(collision_master_mutex);
 	SDL_DestroyCond(collision_master_condition);
 
-//	if (SDL_LockMutex(quicksort_queue_mutex) < 0) {
-//		Error(LOCATION, "quicksort_queue_mutex lock failed: %s\n", SDL_GetError());
-//	}
-//	if (SDL_CondBroadcast(quicksort_queue_condition) < 0) {
-//		Error(LOCATION, "collider_quicksort_thread conditionl var signal failed: %s\n", SDL_GetError());
-//	}
-//	for (i = 0; i < Cmdline_num_threads; i++) {
-//	}
 	for (i = 0; i < Cmdline_num_threads; i++) {
 		while(collision_quicksort_state[i].status != PROCESS_STATE_EXECUTED) {
-//			if (SDL_LockMutex(quicksort_queue_mutex) < 0) {
-//				Error(LOCATION, "quicksort_queue_mutex lock failed: %s\n", SDL_GetError());
-//			}
 			if (SDL_CondBroadcast(quicksort_queue_condition) < 0) {
 				Error(LOCATION, "collider_quicksort_thread conditionl var signal failed: %s\n", SDL_GetError());
 			}

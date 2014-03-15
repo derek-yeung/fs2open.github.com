@@ -1217,116 +1217,6 @@ void obj_collide_retime_cached_pairs(int checkdly)
 	}
 }
 
-inline bool overlap_check(float i_min, float i_max, float j_min, float j_max)
-{
-	bool collide = false;
-
-	if(i_min < j_min)
-	{
-		if(j_min < i_max)
-		{
-			collide = true;
-		}
-	}
-	else
-	{
-		if(i_min < j_max)
-		{
-			collide = true;
-		}
-	}
-
-	return collide;
-}
-
-void new_overlap_collider(SCP_vector<int> *list)
-{
-	size_t i, j;
-	bool collide = false;
-	float i_min, i_max, j_min, j_max;
-
-	for (i = 0; i < (*list).size(); i++)
-	{
-		for (j = (i + 1); j < (*list).size(); j++)
-		{
-			collide = false;
-			//axis 1
-//			i_min = obj_get_collider_endpoint((*list)[i], 0, true);
-//			j_min = obj_get_collider_endpoint((*list)[j], 0, true);
-//			if(i_min < j_min)
-//			{
-//				i_max = obj_get_collider_endpoint((*list)[i], 0, false);
-//				if(j_min < i_max)
-//				{
-//					collide = true;
-//				}
-//			}
-//			else
-//			{
-//				j_max = obj_get_collider_endpoint((*list)[j], 0, false);
-//				if(i_min < j_max)
-//				{
-//					collide = true;
-//				}
-//			}
-//
-//			if(collide)
-			{
-				//axis 2
-				i_min = obj_get_collider_endpoint((*list)[i], 1, true);
-				j_min = obj_get_collider_endpoint((*list)[j], 1, true);
-				if(i_min < j_min)
-				{
-					i_max = obj_get_collider_endpoint((*list)[i], 1, false);
-					if(j_min < i_max)
-					{
-						collide = true;
-					}
-				}
-				else
-				{
-					j_max = obj_get_collider_endpoint((*list)[j], 1, false);
-					if(i_min < j_max)
-					{
-						collide = true;
-					}
-				}
-				if(collide)
-				{
-					//axis 3
-					i_min = obj_get_collider_endpoint((*list)[i], 2, true);
-					j_min = obj_get_collider_endpoint((*list)[j], 2, true);
-					if(i_min < j_min)
-					{
-						i_max = obj_get_collider_endpoint((*list)[i], 2, false);
-						if(j_min < i_max)
-						{
-							collide = true;
-						}
-					}
-					else
-					{
-						j_max = obj_get_collider_endpoint((*list)[j], 2, false);
-						if(i_min < j_max)
-						{
-							collide = true;
-						}
-					}
-					if(collide)
-					{
-						if (Cmdline_num_threads > 1) {
-							collision_pair_add(&Objects[(*list)[i]], &Objects[(*list)[j]]);
-						}
-						else {
-							obj_collide_pair(&Objects[(*list)[i]], &Objects[(*list)[j]]);
-						}
-					}
-				}
-			}
-		}
-	}
-}
-
 void collision_quicksort_multithread(SCP_vector<int> *collision_sort_list, int axis)
 {
 	int SDL_return = 0;
@@ -1424,7 +1314,6 @@ void obj_sort_and_collide()
 #endif
 }
 
-#if 1
 void obj_find_overlap_colliders(SCP_vector<int> *overlap_list_out, SCP_vector<int> *list, int axis, bool collide)
 {
 	size_t i, j;
@@ -1433,8 +1322,6 @@ void obj_find_overlap_colliders(SCP_vector<int> *overlap_list_out, SCP_vector<in
 	SCP_vector<int> overlappers;
 
 	float min;
-//	float max;
-//	float overlap_min;
 	float overlap_max;
 	
 	overlappers.clear();
@@ -1443,10 +1330,8 @@ void obj_find_overlap_colliders(SCP_vector<int> *overlap_list_out, SCP_vector<in
 		overlapped = false;
 
 		min = obj_get_collider_endpoint((*list)[i], axis, true);
-//		max = obj_get_collider_endpoint((*list)[i], axis, false);
 
 		for ( j = 0; j < overlappers.size(); ) {
-//			overlap_min = obj_get_collider_endpoint(overlappers[j], axis, true);
 			overlap_max = obj_get_collider_endpoint(overlappers[j], axis, false);
 			if ( min <= overlap_max ) {
 				overlapped = true;
@@ -1491,89 +1376,6 @@ void obj_find_overlap_colliders(SCP_vector<int> *overlap_list_out, SCP_vector<in
 
 	overlapped = true;
 }
-#else
-void obj_find_overlap_colliders(SCP_vector<int> *overlap_list_out, SCP_vector<int> *list, int axis, bool collide)
-{
-	size_t i, j, i_max, j_max;
-	bool overlapped;
-	bool first_not_added = true;
-	SCP_vector<int> overlappers;
-
-	float min;
-	float max;
-	float overlap_min;
-	float overlap_max;
-
-	overlappers.clear();
-
-	i_max = (*list).size();
-
-	for (i = 0; i < i_max; ++i) {
-		min = obj_get_collider_endpoint((*list)[i], 0, true);
-		j_max = overlappers.size();
-
-		for ( j = 0; j < j_max;) {
-			overlap_max = obj_get_collider_endpoint(overlappers[j], 0, false);
-			if (min <= overlap_max) {
-				overlapped = false;
-				min = obj_get_collider_endpoint((*list)[i], 1, true);
-				overlap_min = obj_get_collider_endpoint(overlappers[j], 1, true);
-				if(min <= overlap_min)
-				{
-					max = obj_get_collider_endpoint((*list)[i], 1, false);
-					if (overlap_min <= max)
-					{
-						overlapped =  true;
-					}
-				}
-				else
-				{
-					overlap_max = obj_get_collider_endpoint(overlappers[j], 1, false);
-					if (min <= overlap_max)
-					{
-						overlapped =  true;
-					}
-				}
-				if(overlapped)
-				{
-					min = obj_get_collider_endpoint((*list)[i], 2, true);
-					overlap_min = obj_get_collider_endpoint(overlappers[j], 2, true);
-					if(min < overlap_min)
-					{
-						max = obj_get_collider_endpoint((*list)[i], 2, false);
-						if (overlap_min <= max)
-						{
-							overlapped =  true;
-						}
-					}
-					else
-					{
-						overlap_max = obj_get_collider_endpoint(overlappers[j], 2, false);
-						if (min <= overlap_max)
-						{
-							overlapped =  true;
-						}
-					}
-				}
-				if (overlapped) {
-					if (Cmdline_num_threads > 1) {
-						collision_pair_add(&Objects[(*list)[i]], &Objects[overlappers[j]]);
-					} else {
-						obj_collide_pair(&Objects[(*list)[i]], &Objects[overlappers[j]]);
-					}
-				}
-			} else {
-				overlappers[j] = overlappers.back();
-				overlappers.pop_back();
-				continue;
-			}
-			j++;
-		}
-
-		overlappers.push_back((*list)[i]);
-	}
-}
-#endif
 
 void obj_quicksort_colliders(SCP_vector<int> *list, int left, int right, int axis)
 {
